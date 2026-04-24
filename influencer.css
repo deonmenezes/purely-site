@@ -83,6 +83,18 @@
   color:var(--ink-3);font-size:12px;
 }
 
+.err-banner{
+  max-width:980px;margin:14px auto 0;
+  background:#fff3f3;border:1px solid #f1c5c5;color:#a83939;
+  padding:12px 16px;border-radius:14px;
+  display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;
+}
+.err-banner .eb-msg{flex:1;word-break:break-word}
+.err-banner .eb-close{
+  background:none;border:0;color:#a83939;font-size:20px;cursor:pointer;
+  padding:0 6px;line-height:1;
+}
+
 /* Page-level drag-over state */
 body.drag-over::after{
   content:"Drop to upload";

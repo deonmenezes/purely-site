@@ -32,10 +32,26 @@ function showToast(msg, type = '') {
   toast.className = 'toast show ' + type;
   toast.hidden = false;
   clearTimeout(showToast._t);
+  const delay = type === 'err' ? 6000 : 3200;
   showToast._t = setTimeout(() => {
     toast.classList.remove('show');
     setTimeout(() => (toast.hidden = true), 250);
-  }, 3200);
+  }, delay);
+  if (type === 'err') showBanner(msg);
+}
+function showBanner(msg) {
+  let b = document.getElementById('err-banner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'err-banner';
+    b.className = 'err-banner';
+    b.innerHTML = `<span class="eb-msg"></span><button class="eb-close" aria-label="Dismiss">×</button>`;
+    const strip = document.querySelector('.up-strip');
+    strip.parentNode.insertBefore(b, strip.nextSibling);
+    b.querySelector('.eb-close').addEventListener('click', () => b.remove());
+  }
+  b.querySelector('.eb-msg').textContent = 'Upload error: ' + msg;
+  b.style.display = 'flex';
 }
 function fmtSize(b) {
   if (b < 1024) return b + ' B';
@@ -118,19 +134,32 @@ function renderQueue() {
 }
 
 /* ---------- File intake ---------- */
+const EXT_TO_TYPE = {
+  heic: 'image/heic', heif: 'image/heif', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+  mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/mp4', webm: 'video/webm',
+  '3gp': 'video/3gpp', avi: 'video/x-msvideo', mkv: 'video/x-matroska'
+};
+function guessType(file) {
+  if (file.type && ALLOWED.test(file.type)) return file.type;
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  return EXT_TO_TYPE[ext] || file.type || '';
+}
 function addFiles(list) {
   const arr = Array.from(list);
   for (const file of arr) {
-    if (!ALLOWED.test(file.type)) {
-      showToast(`"${file.name}" type not supported`, 'err');
+    const type = guessType(file);
+    if (!ALLOWED.test(type)) {
+      showToast(`"${file.name}" isn't an image or video (${file.type || 'unknown type'})`, 'err');
       continue;
     }
     if (file.size > MAX_SIZE) {
-      showToast(`"${file.name}" is over 50MB`, 'err');
+      showToast(`"${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)}MB — max is 50MB`, 'err');
       continue;
     }
     files.push({
-      file, id: Math.random().toString(36).slice(2), progress: 0, state: 'pending'
+      file, id: Math.random().toString(36).slice(2),
+      progress: 0, state: 'pending', guessedType: type
     });
   }
   renderQueue();
@@ -172,19 +201,20 @@ async function uploadOne(entry) {
 
   // 1) Get signed upload URL
   const handle = $('#u-handle').value.trim().replace(/^@/, '');
+  const contentType = entry.guessedType || entry.file.type || 'application/octet-stream';
   const signRes = await fetch('/api/sign-upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       filename: entry.file.name,
-      contentType: entry.file.type,
+      contentType,
       size: entry.file.size,
       handle
     })
   });
   if (!signRes.ok) {
     const err = await signRes.json().catch(() => ({}));
-    throw new Error(err.error || 'Could not get upload URL');
+    throw new Error(err.error || `Could not get upload URL (${signRes.status})`);
   }
   const sign = await signRes.json();
 
@@ -192,7 +222,7 @@ async function uploadOne(entry) {
   await new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', sign.signedUrl, true);
-    xhr.setRequestHeader('Content-Type', entry.file.type);
+    xhr.setRequestHeader('Content-Type', contentType);
     xhr.setRequestHeader('x-upsert', 'false');
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
@@ -201,10 +231,17 @@ async function uploadOne(entry) {
       }
     };
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error('Upload failed (' + xhr.status + ')'));
+      if (xhr.status >= 200 && xhr.status < 300) return resolve();
+      let msg = `Upload failed (${xhr.status})`;
+      try {
+        const j = JSON.parse(xhr.responseText);
+        if (j.message || j.error) msg += ': ' + (j.message || j.error);
+      } catch(_) { if (xhr.responseText) msg += ': ' + xhr.responseText.slice(0, 120); }
+      reject(new Error(msg));
     };
-    xhr.onerror = () => reject(new Error('Network error'));
+    xhr.onerror = () => reject(new Error('Network error — check connection'));
+    xhr.onabort = () => reject(new Error('Upload was cancelled'));
+    xhr.ontimeout = () => reject(new Error('Upload timed out'));
     xhr.send(entry.file);
   });
 
