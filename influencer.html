@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Influencers — Purely</title>
+  <meta name="description" content="Share your Purely review. Upload screenshots or screen recordings and showcase your experience." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@1,600;1,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="influencer.css" />
+  <link rel="icon" href="/assets/purely-logo.webp" />
+</head>
+<body>
+  <!-- NAV -->
+  <header class="nav">
+    <div class="container nav-inner">
+      <a href="/" class="logo">
+        <img src="/assets/purely-logo.webp" alt="" class="logo-mark-img" />
+        <span class="logo-word">Purely</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/#features">Features</a>
+        <a href="/#how">How It Works</a>
+        <a href="/influencer" class="active">Influencers</a>
+        <a href="/#faq">FAQ</a>
+      </nav>
+      <a href="https://apps.apple.com/us/app/purely-find-whats-healthy/id6758014006" target="_blank" rel="noopener" class="btn btn-app nav-cta">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="apple-ico"><path fill="currentColor" d="M16.4 12.8a4.6 4.6 0 0 1 2.3-4 4.7 4.7 0 0 0-3.7-2c-1.6-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9A4.9 4.9 0 0 0 3.8 9.3c-1.8 3-.5 7.6 1.2 10.1.9 1.2 1.9 2.6 3.2 2.5 1.3 0 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.2 3.1-2.4a10.4 10.4 0 0 0 1.5-3 4.5 4.5 0 0 1-3.1-3.7zM14 5.2A4.5 4.5 0 0 0 15.1 2a4.6 4.6 0 0 0-3 1.6 4.3 4.3 0 0 0-1.1 3.1A3.8 3.8 0 0 0 14 5.2z"/></svg>
+        <span class="app-label">
+          <span class="app-top">Download on the</span>
+          <span class="app-bot">App Store</span>
+        </span>
+      </a>
+    </div>
+  </header>
+
+  <!-- HERO + UPLOAD -->
+  <section class="inf-hero">
+    <div class="container">
+      <div class="inf-heading">
+        <span class="pill">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 6 6 1-4.5 4.5 1 6L12 17l-5.5 2.5 1-6L3 9l6-1 3-6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          For Creators & Influencers
+        </span>
+        <h1 class="inf-title">Share your <em>Purely</em> moment.</h1>
+        <p class="inf-sub">Drop a screen recording or screenshot of how you use Purely. We showcase the best on our site and across social. No sign-up needed.</p>
+      </div>
+
+      <!-- UPLOADER -->
+      <div class="uploader" id="uploader">
+        <div class="up-fields">
+          <div class="up-field">
+            <label for="u-name">Your name</label>
+            <input id="u-name" type="text" placeholder="Alex Rivers" maxlength="60" />
+          </div>
+          <div class="up-field">
+            <label for="u-handle">Handle <span class="opt">(optional)</span></label>
+            <input id="u-handle" type="text" placeholder="@alexrivers" maxlength="40" />
+          </div>
+          <div class="up-field wide">
+            <label for="u-caption">Caption <span class="opt">(optional)</span></label>
+            <input id="u-caption" type="text" placeholder="Scanning my morning smoothie with Purely!" maxlength="160" />
+          </div>
+        </div>
+
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="file-input" accept="image/*,video/*" multiple hidden />
+          <div class="dz-inner">
+            <div class="dz-ico">
+              <svg viewBox="0 0 48 48" aria-hidden="true">
+                <defs>
+                  <linearGradient id="dzg" x1="0" x2="1" y1="0" y2="1">
+                    <stop offset="0" stop-color="#7cc892"/>
+                    <stop offset="1" stop-color="#2f7a47"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="24" cy="24" r="22" fill="url(#dzg)" opacity=".12"/>
+                <path d="M24 14v20m0-20l-7 7m7-7l7 7" stroke="url(#dzg)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                <path d="M10 32v2a4 4 0 0 0 4 4h20a4 4 0 0 0 4-4v-2" stroke="url(#dzg)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+              </svg>
+            </div>
+            <div class="dz-text">
+              <strong>Drop your video or screenshot here</strong>
+              <span>or <u>browse files</u> — up to 50 MB per file</span>
+              <div class="dz-hints">
+                <span>MP4</span><span>MOV</span><span>WEBM</span><span>PNG</span><span>JPG</span><span>GIF</span>
+              </div>
+            </div>
+          </div>
+        </label>
+
+        <!-- Upload queue -->
+        <div class="queue" id="queue" hidden></div>
+
+        <button class="btn-submit" id="submit-btn" disabled>
+          <span class="sb-ico">
+            <svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          </span>
+          <span class="sb-label">Upload <span id="sb-count"></span></span>
+        </button>
+
+        <div class="disclosure">By uploading you grant Purely permission to showcase your content on our website and social. Videos/images only — no personal data.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RECENT UPLOADS ROW (TOP) -->
+  <section class="recent-row">
+    <div class="container">
+      <div class="row-head">
+        <div>
+          <div class="eyebrow">LATEST DROPS</div>
+          <h2 class="section-title left">Fresh from the community</h2>
+        </div>
+        <button class="refresh-btn" id="refresh-btn" title="Refresh">
+          <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 4v5h-5M20 12a8 8 0 0 1-14 5.3M4 20v-5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+          Refresh
+        </button>
+      </div>
+      <div class="recent-scroll" id="recent-grid">
+        <div class="loader-card"><div class="loader-bar"></div>Loading latest uploads…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN RECORDINGS + SCREENSHOTS (BOTTOM) -->
+  <section class="gallery">
+    <div class="container">
+      <!-- Videos -->
+      <div class="gal-head">
+        <div class="eyebrow">SCREEN RECORDINGS</div>
+        <h2 class="section-title left">Watch the app in motion</h2>
+      </div>
+      <div class="video-grid" id="video-grid">
+        <div class="empty-state">No videos yet. Be the first to share!</div>
+      </div>
+
+      <!-- Screenshots -->
+      <div class="gal-head" style="margin-top:60px">
+        <div class="eyebrow">SCREENSHOTS</div>
+        <h2 class="section-title left">Snapshots from the community</h2>
+      </div>
+      <div class="shot-grid" id="shot-grid">
+        <div class="empty-state">No screenshots yet. Be the first to share!</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="lb-close" id="lb-close" aria-label="Close">×</button>
+    <div class="lb-body" id="lb-body"></div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" hidden></div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container foot-grid">
+      <div>
+        <a href="/" class="logo logo-foot">
+          <img src="/assets/purely-logo.webp" alt="" class="logo-mark-img" />
+          <span class="logo-word">Purely</span>
+        </a>
+        <p class="foot-copy">Find what's healthy. Choose what's pure.</p>
+      </div>
+      <div>
+        <h5>Product</h5>
+        <a href="/#features">Features</a>
+        <a href="/#how">How It Works</a>
+        <a href="https://apps.apple.com/us/app/purely-find-whats-healthy/id6758014006" target="_blank" rel="noopener">Download</a>
+      </div>
+      <div>
+        <h5>Community</h5>
+        <a href="/influencer">Influencers</a>
+        <a href="/#about">About</a>
+        <a href="/#faq">FAQ</a>
+      </div>
+      <div>
+        <h5>Legal</h5>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+      </div>
+    </div>
+    <div class="container foot-bot">
+      <span>© 2026 Purely. All rights reserved.</span>
+      <span>Made with care for a healthier you.</span>
+    </div>
+  </footer>
+
+  <script type="module" src="influencer.js"></script>
+</body>
+</html>

@@ -8,6 +8,9 @@
     "start": "npx serve . -l 3000",
     "build": "echo 'static site — no build step'"
   },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4"
+  },
   "keywords": ["landing", "purely", "ingredient-scanner"],
   "license": "MIT"
 }
