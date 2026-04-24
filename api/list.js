@@ -1,8 +1,9 @@
 const { createClient } = require('@supabase/supabase-js');
 
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_URL,
+  (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
   { auth: { persistSession: false } }
 );
 
@@ -14,7 +15,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
   try {
-    const base = `${process.env.SUPABASE_URL}/storage/v1/object/public/${BUCKET}`;
+    const base = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}`;
 
     const [v, s] = await Promise.all([
       supabase.storage.from(BUCKET).list('videos', {

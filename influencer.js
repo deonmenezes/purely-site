@@ -10,8 +10,8 @@ const ALLOWED = /^(image\/(png|jpe?g|webp|gif)|video\/(mp4|quicktime|webm))$/;
 
 /* ---------- DOM ---------- */
 const $ = (s) => document.querySelector(s);
-const dropzone = $('#dropzone');
 const fileInput = $('#file-input');
+const pickBtn = $('#pick-btn');
 const queue = $('#queue');
 const submitBtn = $('#submit-btn');
 const sbCount = $('#sb-count');
@@ -136,21 +136,31 @@ function addFiles(list) {
   renderQueue();
 }
 
-dropzone.addEventListener('click', (e) => {
-  if (e.target.tagName === 'INPUT') return;
-  fileInput.click();
-});
+pickBtn.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', (e) => {
   addFiles(e.target.files);
   fileInput.value = '';
 });
-['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, (e) => {
-  e.preventDefault(); dropzone.classList.add('drag');
-}));
-['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, (e) => {
-  e.preventDefault(); dropzone.classList.remove('drag');
-}));
-dropzone.addEventListener('drop', (e) => {
+
+// Page-level drag/drop
+let dragCounter = 0;
+window.addEventListener('dragenter', (e) => {
+  if (!e.dataTransfer?.types?.includes('Files')) return;
+  e.preventDefault();
+  dragCounter++;
+  document.body.classList.add('drag-over');
+});
+window.addEventListener('dragover', (e) => {
+  if (e.dataTransfer?.types?.includes('Files')) e.preventDefault();
+});
+window.addEventListener('dragleave', () => {
+  dragCounter = Math.max(0, dragCounter - 1);
+  if (dragCounter === 0) document.body.classList.remove('drag-over');
+});
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dragCounter = 0;
+  document.body.classList.remove('drag-over');
   if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files);
 });
 
