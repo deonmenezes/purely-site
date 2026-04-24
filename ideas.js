@@ -178,8 +178,8 @@
               </div>
               <button style="margin-left:auto;background:none;border:0;color:#fff;font-size:22px;cursor:pointer" title="More">⋯</button>
             </div>
-            ${i.videoUrl
-              ? `<video id="dt-video" src="${escapeHtml(i.videoUrl)}" controls playsinline preload="metadata" poster="${i.cover ? '/api/img?u=' + encodeURIComponent(i.cover) : ''}"></video>`
+            ${i.id
+              ? `<iframe id="dt-video" src="https://www.tiktok.com/player/v1/${encodeURIComponent(i.id)}?description=0&music_info=0&native_context_menu=0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowfullscreen loading="lazy" style="width:100%;height:100%;border:0;background:#000" referrerpolicy="origin-when-cross-origin"></iframe>`
               : i.cover ? `<img src="/api/img?u=${encodeURIComponent(i.cover)}" alt="" />` : ''}
             <div class="dt-side-stats">
               <div><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.7-7-10a4.5 4.5 0 0 1 8-3 4.5 4.5 0 0 1 8 3c0 5.3-7 10-7 10h-2z"/></svg>${fmtCount(i.stats?.likes)}</div>
@@ -282,21 +282,13 @@
       </div>
     `;
 
-    /* detail interactions */
-    const video = detail.querySelector('#dt-video');
-    if (video) {
-      const rows = detail.querySelectorAll('.t-row');
-      video.addEventListener('timeupdate', () => {
-        const t = video.currentTime;
-        let active = -1;
-        transcript.forEach((item, idx) => { if (item.time <= t) active = idx; });
-        rows.forEach((r, idx) => r.classList.toggle('active', idx === active));
-      });
-      rows.forEach((r) => r.addEventListener('click', () => {
-        video.currentTime = Number(r.dataset.time) || 0;
-        video.play().catch(() => {});
-      }));
-    }
+    /* detail interactions — iframe is sandboxed so we can't sync playback;
+       transcript rows copy their text on click instead. */
+    detail.querySelectorAll('.t-row').forEach((r) => {
+      r.style.cursor = 'pointer';
+      r.title = 'Click to copy this line';
+      r.addEventListener('click', () => copy(r.querySelector('.t-text').textContent));
+    });
 
     detail.querySelector('#copy-script')?.addEventListener('click', () => {
       const full = transcript.map((t) => t.text).join(' ');

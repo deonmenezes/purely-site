@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
   try { target = decodeURIComponent(u); } catch { return res.status(400).end('bad url'); }
   if (!/^https?:\/\//i.test(target)) return res.status(400).end('bad url');
   const host = new URL(target).hostname;
-  if (!/(tiktokcdn|tiktok|ibytedtos|amazonaws|cloudfront|supabase|gstatic|byteoversea|muscdn)/i.test(host)) {
+  if (!/(tiktokcdn|tiktok|ibytedtos|amazonaws|cloudfront|supabase|gstatic|byteoversea|muscdn|apify)/i.test(host)) {
     return res.status(400).end('host not allowed');
   }
   try {
