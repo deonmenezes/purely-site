@@ -225,6 +225,43 @@ body.drag-over::after{
   padding:40px;text-align:center;color:var(--ink-3);
 }
 
+/* ---------- Download button on cards ---------- */
+.dl-btn{
+  position:absolute;top:10px;right:10px;z-index:3;
+  width:34px;height:34px;border-radius:50%;
+  background:rgba(255,255,255,.95);color:var(--green-800);
+  border:0;cursor:pointer;display:grid;place-items:center;
+  box-shadow:0 6px 14px rgba(0,0,0,.25);
+  opacity:0;transform:translateY(-4px);
+  transition:opacity .2s, transform .2s, background .15s, color .15s;
+}
+.dl-btn svg{width:16px;height:16px}
+.recent-card:hover .dl-btn,
+.v-card:hover .dl-btn,
+.s-card:hover .dl-btn{opacity:1;transform:translateY(0)}
+.dl-btn:hover{background:var(--green-700);color:#fff}
+.dl-btn.busy{opacity:1;background:var(--green-700);color:#fff}
+.dl-btn.busy svg{animation:spin 1s linear infinite}
+/* always visible on touch devices */
+@media (hover:none){
+  .dl-btn{opacity:1;transform:none}
+}
+
+/* Download button in lightbox */
+.lb-download{
+  position:absolute;bottom:30px;left:50%;transform:translateX(-50%);
+  display:inline-flex;align-items:center;gap:8px;
+  background:#fff;color:var(--green-900);
+  border:0;border-radius:999px;padding:12px 22px;
+  font:inherit;font-weight:700;font-size:14px;
+  cursor:pointer;box-shadow:0 14px 30px rgba(0,0,0,.35);
+  transition:transform .15s, background .15s;
+}
+.lb-download:hover{background:var(--green-700);color:#fff;transform:translate(-50%,-1px)}
+.lb-download svg{width:16px;height:16px}
+.lb-download.busy svg{animation:spin 1s linear infinite}
+.lb-body{position:relative}
+
 /* ---------- Lightbox ---------- */
 [hidden]{display:none !important}
 .lightbox{

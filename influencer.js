@@ -271,9 +271,26 @@ async function loadGallery() {
   }
 }
 
-function openLightbox(html) {
-  lbBody.innerHTML = html;
+function openLightbox(item) {
+  const isVideo = item.folder === 'videos' || /^video\//.test(item.type || '');
+  const media = isVideo
+    ? `<video src="${item.url}" controls autoplay playsinline></video>`
+    : `<img src="${item.url}" alt="" />`;
+  lbBody.innerHTML = `
+    ${media}
+    <button class="lb-download" id="lb-dl" title="Download">
+      ${downloadSvg}<span>Download</span>
+    </button>
+  `;
   lightbox.hidden = false;
+  const dl = document.getElementById('lb-dl');
+  if (dl) {
+    dl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dl.classList.add('busy');
+      downloadFile(item.url, item.name).finally(() => dl.classList.remove('busy'));
+    });
+  }
 }
 $('#lb-close').addEventListener('click', () => {
   lightbox.hidden = true; lbBody.innerHTML = '';
@@ -286,6 +303,37 @@ document.addEventListener('keydown', (e) => {
     lightbox.hidden = true; lbBody.innerHTML = '';
   }
 });
+
+const downloadSvg = `<svg viewBox="0 0 24 24"><path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
+
+async function downloadFile(url, filename) {
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = filename || 'purely-upload';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
+  } catch (e) {
+    // fallback: direct link in new tab
+    window.open(url, '_blank', 'noopener');
+  }
+}
+
+function wireDownload(card, url, name) {
+  const btn = card.querySelector('.dl-btn');
+  if (!btn) return;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    btn.classList.add('busy');
+    downloadFile(url, name).finally(() => btn.classList.remove('busy'));
+  });
+}
 
 function renderRecent(items) {
   if (items.length === 0) {
@@ -300,6 +348,7 @@ function renderRecent(items) {
     card.innerHTML = `
       <div class="rc-media">
         <span class="rc-type">${isVideo ? 'Video' : 'Photo'}</span>
+        <button class="dl-btn" title="Download">${downloadSvg}</button>
         ${isVideo
           ? `<video src="${i.url}" muted playsinline preload="metadata"></video>
              <div class="rc-play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l12 7-12 7V5z"/></svg></div>`
@@ -312,11 +361,12 @@ function renderRecent(items) {
     `;
     card.onclick = () => {
       if (isVideo) {
-        openLightbox(`<video src="${i.url}" controls autoplay playsinline></video>`);
+        openLightbox(i);
       } else {
-        openLightbox(`<img src="${i.url}" alt="" />`);
+        openLightbox(i);
       }
     };
+    wireDownload(card, i.url, i.name);
     recentGrid.appendChild(card);
   });
 }
@@ -332,6 +382,7 @@ function renderVideos(items) {
     card.className = 'v-card';
     card.innerHTML = `
       <div class="v-media">
+        <button class="dl-btn" title="Download">${downloadSvg}</button>
         <video src="${i.url}" muted playsinline preload="metadata"></video>
         <div class="rc-play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l12 7-12 7V5z"/></svg></div>
       </div>
@@ -340,7 +391,8 @@ function renderVideos(items) {
         <span>${timeAgo(i.createdAt)} · ${fmtSize(i.size)}</span>
       </div>
     `;
-    card.onclick = () => openLightbox(`<video src="${i.url}" controls autoplay playsinline></video>`);
+    card.onclick = () => openLightbox(i);
+    wireDownload(card, i.url, i.name);
     videoGrid.appendChild(card);
   });
 }
@@ -355,13 +407,17 @@ function renderShots(items) {
     const card = document.createElement('div');
     card.className = 's-card';
     card.innerHTML = `
-      <div class="s-media"><img src="${i.url}" alt="" loading="lazy" /></div>
+      <div class="s-media">
+        <button class="dl-btn" title="Download">${downloadSvg}</button>
+        <img src="${i.url}" alt="" loading="lazy" />
+      </div>
       <div class="s-meta">
         <strong>${niceName(i.name)}</strong>
         <span>${timeAgo(i.createdAt)}</span>
       </div>
     `;
-    card.onclick = () => openLightbox(`<img src="${i.url}" alt="" />`);
+    card.onclick = () => openLightbox(i);
+    wireDownload(card, i.url, i.name);
     shotGrid.appendChild(card);
   });
 }
