@@ -8,10 +8,7 @@ const supabase = createClient(
 );
 
 const BUCKET = 'influencer-uploads';
-const ALLOWED = new Set([
-  'image/png', 'image/jpeg', 'image/webp', 'image/gif',
-  'video/mp4', 'video/quicktime', 'video/webm'
-]);
+const ALLOWED_RE = /^(image|video)\//i;
 
 function slugify(s) {
   return String(s || '')
@@ -36,8 +33,8 @@ module.exports = async function handler(req, res) {
     if (!filename || !contentType) {
       return res.status(400).json({ error: 'filename and contentType required' });
     }
-    if (!ALLOWED.has(contentType)) {
-      return res.status(400).json({ error: 'File type not allowed' });
+    if (!ALLOWED_RE.test(contentType)) {
+      return res.status(400).json({ error: 'Only image and video files are allowed' });
     }
     if (size && size > 52 * 1024 * 1024) {
       return res.status(400).json({ error: 'File too large (50MB max)' });

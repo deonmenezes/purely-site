@@ -6,7 +6,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 const BUCKET = 'influencer-uploads';
 const MAX_SIZE = 50 * 1024 * 1024;
-const ALLOWED = /^(image\/(png|jpe?g|webp|gif)|video\/(mp4|quicktime|webm))$/;
+const ALLOWED = /^(image|video)\//i;
 
 /* ---------- DOM ---------- */
 const $ = (s) => document.querySelector(s);
@@ -252,7 +252,12 @@ submitBtn.addEventListener('click', async () => {
     }, 1500);
     loadGallery();
   }
-  if (fail > 0 && ok === 0) showToast('Upload failed. Try again.', 'err');
+  if (fail > 0 && ok === 0) {
+    const firstErr = files.find((f) => f.state === 'err');
+    showToast(firstErr?.error ? `Upload failed: ${firstErr.error}` : 'Upload failed. Try again.', 'err');
+  } else if (fail > 0) {
+    showToast(`${ok} uploaded, ${fail} failed`, 'err');
+  }
 });
 
 /* ---------- Gallery ---------- */
