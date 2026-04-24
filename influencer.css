@@ -300,13 +300,50 @@ body.drag-over::after{
 @media (max-width:900px){
   .video-grid{grid-template-columns:repeat(2,1fr)}
   .shot-grid{grid-template-columns:repeat(3,1fr)}
-  .up-fields{grid-template-columns:1fr}
+  .up-strip{
+    grid-template-columns:1fr 1fr;
+    gap:8px;padding:10px;
+  }
+  .us-pick,.us-submit{grid-column:span 1}
 }
 @media (max-width:560px){
-  .video-grid,.shot-grid{grid-template-columns:repeat(2,1fr)}
-  .uploader{padding:20px;border-radius:22px}
-  .dropzone{padding:32px 18px}
-  .dz-text strong{font-size:15px}
-  .row-head{flex-direction:column;align-items:flex-start}
-  .recent-scroll{grid-auto-columns:220px}
+  .inf-hero{padding:40px 0 28px}
+  .inf-heading.compact{margin-bottom:16px}
+  .video-grid,.shot-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .row-head{flex-direction:column;align-items:flex-start;gap:10px}
+  .recent-scroll{grid-auto-columns:200px}
+
+  /* Fully stack the upload strip */
+  .up-strip{
+    grid-template-columns:1fr;
+    border-radius:16px;gap:8px;padding:10px;
+    margin:0 4px;
+  }
+  .us-field{min-height:48px;padding:0 12px;border-radius:12px}
+  .us-field input{font-size:16px} /* prevents iOS zoom on focus */
+  .us-pick,.us-submit{
+    min-height:48px;width:100%;justify-content:center;
+    padding:0 18px;border-radius:12px;font-size:15px;
+  }
+  .us-hint{font-size:11px;padding:0 12px;margin-top:10px}
+
+  /* Queue items compact on mobile */
+  .queue{margin:12px 4px 0}
+  .q-item{padding:8px 10px;gap:10px;border-radius:12px}
+  .q-thumb{width:36px;height:36px;flex:0 0 36px}
+  .q-state{min-width:48px;font-size:10px}
+
+  /* Container padding tighter */
+  .inf-hero .container,
+  .recent-row .container,
+  .gallery .container{padding:0 14px}
+
+  /* Card download button always visible on mobile */
+  .dl-btn{opacity:1;transform:none;width:32px;height:32px}
+  .dl-btn svg{width:14px;height:14px}
+
+  /* Lightbox tweaks for mobile */
+  .lightbox{padding:16px}
+  .lb-close{top:10px;right:10px;width:40px;height:40px;font-size:22px}
+  .lb-download{bottom:20px;padding:10px 18px;font-size:13px}
 }
