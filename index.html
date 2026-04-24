@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Purely — Find what's healthy. Choose what's pure.</title>
+  <meta name="description" content="Purely helps you scan ingredients, analyze nutrition, and make better choices for a healthier you." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@1,600;1,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%234ea96b' d='M32 4C18 8 10 20 10 34c8-2 16-8 20-18 4 10 12 16 20 18 0-14-8-26-18-30z'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <!-- NAV -->
+  <header class="nav">
+    <div class="container nav-inner">
+      <a href="#" class="logo">
+        <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M20 44c-6-10 0-24 12-28 4 14-2 24-12 28z" fill="#7cc892"/>
+          <path d="M44 44c6-10 0-24-12-28-4 14 2 24 12 28z" fill="#2f7a47"/>
+        </svg>
+        <span class="logo-word">Purely</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#home" class="active">Home</a>
+        <a href="#features">Features</a>
+        <a href="#how">How It Works</a>
+        <a href="#about">About</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <a href="#download" class="btn btn-app nav-cta">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="apple-ico"><path fill="currentColor" d="M16.4 12.8a4.6 4.6 0 0 1 2.3-4 4.7 4.7 0 0 0-3.7-2c-1.6-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9A4.9 4.9 0 0 0 3.8 9.3c-1.8 3-.5 7.6 1.2 10.1.9 1.2 1.9 2.6 3.2 2.5 1.3 0 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.2 3.1-2.4a10.4 10.4 0 0 0 1.5-3 4.5 4.5 0 0 1-3.1-3.7zM14 5.2A4.5 4.5 0 0 0 15.1 2a4.6 4.6 0 0 0-3 1.6 4.3 4.3 0 0 0-1.1 3.1A3.8 3.8 0 0 0 14 5.2z"/></svg>
+        <span class="app-label">
+          <span class="app-top">Download on the</span>
+          <span class="app-bot">App Store</span>
+        </span>
+      </a>
+      <button class="nav-toggle" aria-label="Menu" id="navToggle">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero" id="home">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <span class="pill">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 6 6 1-4.5 4.5 1 6L12 17l-5.5 2.5 1-6L3 9l6-1 3-6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          #1 Ingredient Scanner App
+        </span>
+        <h1 class="hero-title">
+          Find what's<br/>
+          healthy. Choose<br/>
+          what's <em>pure.</em>
+        </h1>
+        <p class="hero-sub">
+          Purely helps you scan ingredients, analyze nutrition,<br class="br-desktop"/>
+          and make better choices for a healthier you.
+        </p>
+        <a href="#download" class="btn btn-app btn-big">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="apple-ico"><path fill="currentColor" d="M16.4 12.8a4.6 4.6 0 0 1 2.3-4 4.7 4.7 0 0 0-3.7-2c-1.6-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9A4.9 4.9 0 0 0 3.8 9.3c-1.8 3-.5 7.6 1.2 10.1.9 1.2 1.9 2.6 3.2 2.5 1.3 0 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.2 3.1-2.4a10.4 10.4 0 0 0 1.5-3 4.5 4.5 0 0 1-3.1-3.7zM14 5.2A4.5 4.5 0 0 0 15.1 2a4.6 4.6 0 0 0-3 1.6 4.3 4.3 0 0 0-1.1 3.1A3.8 3.8 0 0 0 14 5.2z"/></svg>
+          <span class="app-label">
+            <span class="app-top">Download on the</span>
+            <span class="app-bot">App Store</span>
+          </span>
+        </a>
+        <div class="rating">
+          <span class="stars" aria-label="4.8 out of 5 stars">
+            <svg viewBox="0 0 24 24"><path d="M12 2l3 7 7 .5-5.5 4.8L18 22l-6-3.8L6 22l1.5-7.7L2 9.5 9 9z" fill="#f5b400"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3 7 7 .5-5.5 4.8L18 22l-6-3.8L6 22l1.5-7.7L2 9.5 9 9z" fill="#f5b400"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3 7 7 .5-5.5 4.8L18 22l-6-3.8L6 22l1.5-7.7L2 9.5 9 9z" fill="#f5b400"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3 7 7 .5-5.5 4.8L18 22l-6-3.8L6 22l1.5-7.7L2 9.5 9 9z" fill="#f5b400"/></svg>
+            <svg viewBox="0 0 24 24"><defs><linearGradient id="half"><stop offset="50%" stop-color="#f5b400"/><stop offset="50%" stop-color="#e2e8e4"/></linearGradient></defs><path d="M12 2l3 7 7 .5-5.5 4.8L18 22l-6-3.8L6 22l1.5-7.7L2 9.5 9 9z" fill="url(#half)"/></svg>
+          </span>
+          <strong>4.8</strong>
+          <span class="dot">•</span>
+          <span>10K+ Ratings</span>
+        </div>
+
+        <div class="feature-row">
+          <div class="feat">
+            <div class="feat-ico">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M20 7V5a1 1 0 0 0-1-1h-2M4 17v2a1 1 0 0 0 1 1h2M20 17v2a1 1 0 0 1-1 1h-2M8 12h8M12 8v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+            </div>
+            <div>Scan<br/>Ingredients</div>
+          </div>
+          <div class="feat">
+            <div class="feat-ico">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-2 3 3 3 0 0 0 1 2 3 3 0 0 0 1 4 3 3 0 0 0 3 3h0V4zM15 4a3 3 0 0 1 3 3v1a3 3 0 0 1 2 3 3 3 0 0 1-1 2 3 3 0 0 1-1 4 3 3 0 0 1-3 3h0V4z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+            </div>
+            <div>AI-Powered<br/>Analysis</div>
+          </div>
+          <div class="feat">
+            <div class="feat-ico">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10m5 10V4m5 16v-8m5 8V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+            </div>
+            <div>Nutrition<br/>Insights</div>
+          </div>
+          <div class="feat">
+            <div class="feat-ico">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-7 11-7 11z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
+            </div>
+            <div>Healthier<br/>Choices</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PHONE MOCKUPS -->
+      <div class="hero-visual" aria-hidden="true">
+        <div class="leaf leaf-a"></div>
+        <div class="leaf leaf-b"></div>
+        <div class="glow"></div>
+
+        <div class="phone phone-back">
+          <div class="phone-frame">
+            <div class="notch"></div>
+            <div class="screen">
+              <div class="screen-top">
+                <span>9:81</span>
+                <span class="icons"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>
+              </div>
+              <div class="screen-hdr">
+                <button class="back">‹</button>
+                <strong>Ingredient Analysis</strong>
+                <span></span>
+              </div>
+              <div class="prod">
+                <div class="prod-img bar-choc"></div>
+                <div>
+                  <div class="prod-name">Chocolate Protein Bar</div>
+                  <div class="prod-tag">Good Choice</div>
+                </div>
+              </div>
+              <div class="score-ring">
+                <svg viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="52" stroke="#e8f0ea" stroke-width="10" fill="none"/>
+                  <circle cx="60" cy="60" r="52" stroke="#4ea96b" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="326" stroke-dashoffset="49" transform="rotate(-90 60 60)"/>
+                </svg>
+                <div class="score-n"><strong>85</strong><span>/100</span></div>
+              </div>
+              <div class="breakdown-title">Breakdown</div>
+              <ul class="bd">
+                <li><span class="dot g"></span>Good Ingredients<span class="num">18</span></li>
+                <li><span class="dot y"></span>Watch Out<span class="num">3</span></li>
+                <li><span class="dot r"></span>Avoid<span class="num">0</span></li>
+              </ul>
+              <div class="why">
+                <div class="why-hdr"><strong>Ingredients</strong><a>Why it's good</a></div>
+                <div class="why-item">
+                  <strong>Protein Blend</strong>
+                  <div class="why-sub">(Pea Protein, Whey Protein)</div>
+                  <p>High in protein, supports muscle growth</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone phone-front">
+          <div class="phone-frame">
+            <div class="notch"></div>
+            <div class="screen">
+              <div class="screen-top">
+                <span>9:81</span>
+                <span class="icons"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>
+              </div>
+              <div class="brand-row">
+                <svg class="mini-logo" viewBox="0 0 64 64"><path d="M20 44c-6-10 0-24 12-28 4 14-2 24-12 28z" fill="#7cc892"/><path d="M44 44c6-10 0-24-12-28-4 14 2 24 12 28z" fill="#2f7a47"/></svg>
+                <strong>Purely</strong>
+              </div>
+              <div class="greet">Hi, Alex! <span>👋</span></div>
+              <div class="sub-greet">Let's find what's healthy today.</div>
+              <div class="search">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                <input type="text" placeholder="Search for an ingredient" disabled />
+                <button class="scan-btn">
+                  <svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M20 7V5a1 1 0 0 0-1-1h-2M4 17v2a1 1 0 0 0 1 1h2M20 17v2a1 1 0 0 1-1 1h-2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+                </button>
+              </div>
+              <div class="sec-hdr"><strong>Scan History</strong><a>View all</a></div>
+              <div class="history">
+                <div class="prod-img bar-choc sm"></div>
+                <div class="h-mid">
+                  <div class="prod-name">Chocolate Protein Bar</div>
+                  <div class="h-sub">Scanned just now</div>
+                </div>
+                <div class="score-chip">
+                  <strong>85</strong>
+                  <span>Good</span>
+                </div>
+              </div>
+              <div class="sec-hdr"><strong>Health Score</strong><a>This Week ›</a></div>
+              <div class="hs-card">
+                <div class="hs-n"><strong>82</strong><span>/100</span></div>
+                <svg class="spark" viewBox="0 0 120 40" preserveAspectRatio="none">
+                  <path d="M0 30 L20 26 L40 28 L60 22 L80 18 L100 14 L120 6" stroke="#4ea96b" stroke-width="2" fill="none" stroke-linecap="round"/>
+                  <path d="M0 30 L20 26 L40 28 L60 22 L80 18 L100 14 L120 6 L120 40 L0 40 Z" fill="url(#gGreen)" opacity=".25"/>
+                  <defs><linearGradient id="gGreen" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#4ea96b"/><stop offset="1" stop-color="#4ea96b" stop-opacity="0"/></linearGradient></defs>
+                </svg>
+                <div class="hs-note">Great choices! Keep it up.</div>
+              </div>
+              <div class="sec-hdr"><strong>Nutrition Summary</strong><a>This Week ›</a></div>
+              <div class="nut-row">
+                <div><strong>1280</strong><span>Calories avg</span></div>
+                <div><strong>65g</strong><span>Sugar avg</span></div>
+                <div><strong>42g</strong><span>Protein avg</span></div>
+              </div>
+              <div class="tabbar">
+                <span>Home</span><span>History</span><span class="active">●</span><span>Insights</span><span>Profile</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how" id="how">
+    <div class="container">
+      <div class="eyebrow">HOW IT WORKS</div>
+      <h2 class="section-title">Better choices in 3 simple steps</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-ico">
+            <svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M20 7V5a1 1 0 0 0-1-1h-2M4 17v2a1 1 0 0 0 1 1h2M20 17v2a1 1 0 0 1-1 1h-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          </div>
+          <h3>1. Scan</h3>
+          <p>Scan any product barcode<br/>or search for an ingredient.</p>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <div class="step-ico">
+            <svg viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-2 3 3 3 0 0 0 1 2 3 3 0 0 0 1 4 3 3 0 0 0 3 3V4zM15 4a3 3 0 0 1 3 3v1a3 3 0 0 1 2 3 3 3 0 0 1-1 2 3 3 0 0 1-1 4 3 3 0 0 1-3 3V4z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>2. Analyze</h3>
+          <p>Our AI analyzes ingredients<br/>and nutrition instantly.</p>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <div class="step-ico">
+            <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-7 11-7 11z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>3. Choose Better</h3>
+          <p>Get simple insights so you can<br/>choose what's healthy.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KNOW YOUR INGREDIENTS -->
+  <section class="know" id="features">
+    <div class="container know-grid">
+      <div class="know-copy">
+        <h2 class="section-title left">Know Your Ingredients.<br/>Protect Your <em>Health.</em></h2>
+        <p class="know-sub">Purely analyzes ingredients, highlights what's good, what to watch out for, and what to avoid—so you can make confident, healthier choices every day.</p>
+        <ul class="perks">
+          <li>
+            <div class="perk-ico">
+              <svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M20 7V5a1 1 0 0 0-1-1h-2M4 17v2a1 1 0 0 0 1 1h2M20 17v2a1 1 0 0 1-1 1h-2M8 12h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+            </div>
+            <div>
+              <strong>Clear Ingredient Insights</strong>
+              <p>Understand every ingredient and its impact.</p>
+            </div>
+          </li>
+          <li>
+            <div class="perk-ico">
+              <svg viewBox="0 0 24 24"><path d="M4 20V10m5 10V4m5 16v-8m5 8V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+            </div>
+            <div>
+              <strong>Nutrition Made Simple</strong>
+              <p>Get easy-to-read nutrition summaries.</p>
+            </div>
+          </li>
+          <li>
+            <div class="perk-ico">
+              <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-7 11-7 11z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
+            </div>
+            <div>
+              <strong>Avoid Risky Ingredients</strong>
+              <p>We flag harmful or risky ingredients for you.</p>
+            </div>
+          </li>
+          <li>
+            <div class="perk-ico">
+              <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-7 11-7 11z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
+            </div>
+            <div>
+              <strong>Personalized for You</strong>
+              <p>Smarter insights tailored to your health goals.</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div class="know-visual" aria-hidden="true">
+        <div class="phone phone-solo">
+          <div class="phone-frame">
+            <div class="notch"></div>
+            <div class="screen">
+              <div class="screen-top"><span>9:85</span><span class="icons"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span></div>
+              <div class="screen-hdr"><button class="back">‹</button><strong>Ingredient Analysis</strong><span></span></div>
+              <div class="prod">
+                <div class="prod-img yogurt"></div>
+                <div>
+                  <div class="prod-name">Strawberry Yogurt</div>
+                  <div class="prod-tag">Good Choice</div>
+                </div>
+              </div>
+              <div class="score-ring">
+                <svg viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="52" stroke="#e8f0ea" stroke-width="10" fill="none"/>
+                  <circle cx="60" cy="60" r="52" stroke="#4ea96b" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="326" stroke-dashoffset="26" transform="rotate(-90 60 60)"/>
+                </svg>
+                <div class="score-n"><strong>92</strong><span>/100</span></div>
+              </div>
+              <div class="breakdown-title">Breakdown</div>
+              <ul class="bd">
+                <li><span class="dot g"></span>Good Ingredients<span class="num">15</span></li>
+                <li><span class="dot y"></span>Watch Out<span class="num">1</span></li>
+                <li><span class="dot r"></span>Avoid<span class="num">0</span></li>
+              </ul>
+              <div class="top-good">
+                <strong>Top Good Ingredients</strong>
+                <div class="good-item"><span class="g-dot"></span><div><strong>Strawberries</strong><p>Rich in antioxidants and vitamin C</p></div></div>
+                <div class="good-item"><span class="g-dot"></span><div><strong>Probiotics</strong><p>Supports gut health and digestion</p></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bowl" role="img" aria-label="Fresh fruit bowl">
+          <div class="bowl-inner">
+            <span class="berry b1"></span>
+            <span class="berry b2"></span>
+            <span class="berry b3"></span>
+            <span class="leaf-g"></span>
+          </div>
+        </div>
+        <div class="callout">
+          <div class="callout-ico">
+            <svg viewBox="0 0 64 64"><path d="M20 44c-6-10 0-24 12-28 4 14-2 24-12 28z" fill="#7cc892"/><path d="M44 44c6-10 0-24-12-28-4 14 2 24 12 28z" fill="#2f7a47"/></svg>
+          </div>
+          <div>Small choices today,<br/>healthier tomorrow.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST BAR -->
+  <section class="trust">
+    <div class="container trust-inner">
+      <div class="trust-title">Trusted by thousands of health-conscious users</div>
+      <div class="trust-stats">
+        <div class="stat">
+          <svg class="laurel" viewBox="0 0 80 40" aria-hidden="true"><path d="M10 35c8-4 18-10 22-25m38 25c-8-4-18-10-22-25" stroke="#d9b24f" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+          <div>
+            <div class="stars-small">★★★★★</div>
+            <div class="stat-v">4.8/5 on App Store</div>
+          </div>
+          <svg class="laurel flip" viewBox="0 0 80 40" aria-hidden="true"><path d="M10 35c8-4 18-10 22-25m38 25c-8-4-18-10-22-25" stroke="#d9b24f" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div class="divider"></div>
+        <div class="stat"><div><strong>10K+</strong><span>Happy Users</span></div></div>
+        <div class="divider"></div>
+        <div class="stat"><div><strong>500K+</strong><span>Scans Performed</span></div></div>
+        <div class="divider"></div>
+        <div class="stat"><div><strong>4.8★</strong><span>App Store Rating</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="about" id="about">
+    <div class="container">
+      <div class="eyebrow">ABOUT PURELY</div>
+      <h2 class="section-title">Built for people who care what they put in their body.</h2>
+      <p class="about-lead">We started Purely because reading food labels shouldn't feel like decoding a science paper. Our team of nutritionists and engineers built an app that turns confusing ingredient lists into clear, simple guidance — in under a second.</p>
+      <div class="about-grid">
+        <div class="about-card">
+          <div class="about-num">01</div>
+          <h4>Backed by science</h4>
+          <p>Our scoring is reviewed by registered dietitians and based on peer-reviewed research.</p>
+        </div>
+        <div class="about-card">
+          <div class="about-num">02</div>
+          <h4>Private by design</h4>
+          <p>Your scans stay yours. We never sell personal data or health information.</p>
+        </div>
+        <div class="about-card">
+          <div class="about-num">03</div>
+          <h4>Always learning</h4>
+          <p>Our ingredient database updates daily with the latest research and product changes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq" id="faq">
+    <div class="container faq-inner">
+      <div>
+        <div class="eyebrow">FAQ</div>
+        <h2 class="section-title left">Questions, answered.</h2>
+        <p class="know-sub">Can't find what you're looking for? Reach out anytime — we love hearing from you.</p>
+      </div>
+      <div class="faq-list">
+        <details open>
+          <summary>Is Purely free to use?<span class="chev">+</span></summary>
+          <p>Yes. Core scanning and ingredient analysis are free. Purely Plus unlocks personalized health goals, advanced insights, and weekly reports.</p>
+        </details>
+        <details>
+          <summary>How accurate is the scoring?<span class="chev">+</span></summary>
+          <p>Our scoring combines ingredient quality, nutritional density, and processing level. It's reviewed by dietitians and updated as new research is published.</p>
+        </details>
+        <details>
+          <summary>Does it work with any product?<span class="chev">+</span></summary>
+          <p>Purely supports millions of products across the US and is growing daily. If a product isn't found, you can submit it and we'll add it within 48 hours.</p>
+        </details>
+        <details>
+          <summary>Is my data private?<span class="chev">+</span></summary>
+          <p>Absolutely. All scans are encrypted end-to-end and never sold. You can export or delete your data at any time.</p>
+        </details>
+        <details>
+          <summary>Which devices are supported?<span class="chev">+</span></summary>
+          <p>Purely is available on iPhone today, with Android launching soon. Sign up on the waitlist to get notified.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta" id="download">
+    <div class="container cta-inner">
+      <h2>Start making purer choices today.</h2>
+      <p>Download Purely and scan your first product in seconds.</p>
+      <a href="#" class="btn btn-app btn-big light">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="apple-ico"><path fill="currentColor" d="M16.4 12.8a4.6 4.6 0 0 1 2.3-4 4.7 4.7 0 0 0-3.7-2c-1.6-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9A4.9 4.9 0 0 0 3.8 9.3c-1.8 3-.5 7.6 1.2 10.1.9 1.2 1.9 2.6 3.2 2.5 1.3 0 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.2 3.1-2.4a10.4 10.4 0 0 0 1.5-3 4.5 4.5 0 0 1-3.1-3.7zM14 5.2A4.5 4.5 0 0 0 15.1 2a4.6 4.6 0 0 0-3 1.6 4.3 4.3 0 0 0-1.1 3.1A3.8 3.8 0 0 0 14 5.2z"/></svg>
+        <span class="app-label">
+          <span class="app-top">Download on the</span>
+          <span class="app-bot">App Store</span>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container foot-grid">
+      <div>
+        <a href="#" class="logo logo-foot">
+          <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 44c-6-10 0-24 12-28 4 14-2 24-12 28z" fill="#7cc892"/><path d="M44 44c6-10 0-24-12-28-4 14 2 24 12 28z" fill="#2f7a47"/></svg>
+          <span class="logo-word">Purely</span>
+        </a>
+        <p class="foot-copy">Find what's healthy. Choose what's pure.</p>
+      </div>
+      <div>
+        <h5>Product</h5>
+        <a href="#features">Features</a>
+        <a href="#how">How It Works</a>
+        <a href="#download">Download</a>
+      </div>
+      <div>
+        <h5>Company</h5>
+        <a href="#about">About</a>
+        <a href="#faq">FAQ</a>
+        <a href="#">Contact</a>
+      </div>
+      <div>
+        <h5>Legal</h5>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+      </div>
+    </div>
+    <div class="container foot-bot">
+      <span>© 2026 Purely. All rights reserved.</span>
+      <span>Made with care for a healthier you.</span>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
