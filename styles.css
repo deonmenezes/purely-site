@@ -88,6 +88,8 @@ em{font-family:'Playfair Display',serif;font-style:italic;font-weight:700;color:
 .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:14px 24px}
 .logo{display:flex;align-items:center;gap:8px;font-weight:800}
 .logo-mark{width:28px;height:28px}
+.logo-mark-img{width:32px;height:32px;border-radius:8px;object-fit:cover;box-shadow:0 2px 6px rgba(28,58,37,.18);display:block;flex:0 0 32px}
+.logo-foot .logo-mark-img{width:28px;height:28px;flex:0 0 28px}
 .logo-word{font-size:22px;color:var(--green-900);letter-spacing:-.01em}
 .nav-links{display:flex;gap:32px;font-weight:500;color:var(--ink-2)}
 .nav-links a{padding:6px 2px;position:relative}
