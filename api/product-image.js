@@ -8,6 +8,23 @@ const { createClient } = require('@supabase/supabase-js');
 const { guard } = require('./_security');
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
+
+async function cropTo916(buf) {
+  try {
+    const img = sharp(buf);
+    const meta = await img.metadata();
+    const w = meta.width || 1024;
+    const h = meta.height || 1536;
+    // 9:16 ratio: width = height * 9/16
+    const targetW = Math.round(h * 9 / 16);
+    if (targetW >= w) return buf; // already narrower than 9:16
+    const left = Math.round((w - targetW) / 2);
+    return await img.extract({ left, top: 0, width: targetW, height: h }).png().toBuffer();
+  } catch (e) {
+    return buf; // never block on processing failure
+  }
+}
 
 const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
@@ -48,13 +65,26 @@ function buildPrompt(analysis, screen) {
   const benef = Array.isArray(a.beneficialAttributes) ? a.beneficialAttributes : [];
   const ui = a.uiSummary?.topAttributes || [];
 
-  const COMMON = `STYLE TEMPLATE: The attached reference image(s) show the EXACT visual language of the Purely product-analysis app. Match it faithfully — same off-white app background, same dark serif title typography, same Purely "P" wordmark at top, rounded card frames with thin red borders for risks and thin green borders/dots for positives, same iconography (back arrow, info icon, eye icon), same status bar, same circular score badge style.
+  const COMMON = `STYLE TEMPLATE — TREAT THE ATTACHED REFERENCE IMAGES AS GROUND TRUTH:
+The reference images you've been given ARE Purely's exact visual language. Replicate every detail pixel-faithfully:
+- Off-white / cream app background (#fdfaf5 area)
+- Dark serif/semibold sans-serif title typography (e.g. "Sara Lee Artesano Baker's Bread", "Fiji Natural Artesian Water")
+- Compact Purely "P" pinwheel logo + "Purely" or "Purely App" wordmark, both in dark forest green, set inside a small rounded white chip at the top of the screen
+- Rounded white cards with THIN red border for harmful items, THIN green border for beneficial items
+- Score shown as a circular ring badge with the score number large + verdict word small beneath (e.g. "1/100 Bad", "25/100 Very Poor")
+- Top icons: back arrow on left, eye/info icon on right
+- Stat rows with leaf icons, attribute name on the left, value on the right, colored DOT (red/green/amber) at the far right
+- Pill chips: small rounded pills, one neutral with category, one warning with "⚠ Toxin report"
+- Numeric pills like "9× limit", "300x limit", "Avoid", "Watch Out", "Good" — small rounded badges in red/amber/green
+- Bottom footer: tiny centered text "Scored by  Purely" with a small Purely "P" logo
 
-BRAND IDENTITY (REQUIRED on every screen): Use the Purely "P" pinwheel logo from the SECOND reference image, EXACTLY as-is, sitting in a softly rounded white tile. Place it at the top of the phone screen with the wordmark "Purely" or "Purely App" set immediately to its right. This is the only logo allowed.
+Do NOT invent a different style. Do NOT add gradients or 3D effects. Do NOT use bright colors that aren't in the references. The output must be visually indistinguishable in style from the references.
+
+BRAND IDENTITY (REQUIRED on every screen): The Purely logo is provided as the LAST reference image. Use it EXACTLY — pinwheel of three dark-forest-green petals + the "Purely" wordmark beside or beneath it. No other brand identity.
 
 PRODUCT FIDELITY (CRITICAL): The product is "${brand ? brand + ' ' : ''}${productName}"${subject ? ' — ' + subject : ''}. Render its real-world packaging exactly: same shape, same dominant colors, same brand wordmark style, same label motifs. Use your knowledge of the actual product if it's a known brand. Do NOT invent a generic product.
 
-Output: ONE 1024×1536 photorealistic iPhone screenshot. Premium polished UI, NOT a sketch. NO text outside the phone screen.`;
+OUTPUT: ONE single 9:16 vertical phone screenshot. The phone screen content fills the canvas. NO text outside the phone screen, NO marketing border, NO drop shadows around the phone. Premium polished mobile UI rendering — NOT a sketch, NOT an illustration.`;
 
   if (screen === 'summary') {
     return `${COMMON}
@@ -176,7 +206,8 @@ module.exports = async function handler(req, res) {
     const b64 = j.data?.[0]?.b64_json;
     if (!b64) return bad(res, 502, 'OpenAI returned no image');
 
-    const bytes = Buffer.from(b64, 'base64');
+    const rawBytes = Buffer.from(b64, 'base64');
+    const bytes = await cropTo916(rawBytes);
     const { error: upErr } = await supabase.storage.from(BUCKET).upload(path_, bytes, {
       contentType: 'image/png', upsert: true, cacheControl: '604800'
     });

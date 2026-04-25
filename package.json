@@ -9,8 +9,13 @@
     "build": "echo 'static site — no build step'"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.4"
+    "@supabase/supabase-js": "^2.49.4",
+    "sharp": "^0.34.5"
   },
-  "keywords": ["landing", "purely", "ingredient-scanner"],
+  "keywords": [
+    "landing",
+    "purely",
+    "ingredient-scanner"
+  ],
   "license": "MIT"
 }

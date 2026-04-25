@@ -9,6 +9,20 @@ const { createClient } = require('@supabase/supabase-js');
 const { guard } = require('./_security');
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
+
+async function cropTo916(buf) {
+  try {
+    const img = sharp(buf);
+    const meta = await img.metadata();
+    const w = meta.width || 1024;
+    const h = meta.height || 1536;
+    const targetW = Math.round(h * 9 / 16);
+    if (targetW >= w) return buf;
+    const left = Math.round((w - targetW) / 2);
+    return await img.extract({ left, top: 0, width: targetW, height: h }).png().toBuffer();
+  } catch { return buf; }
+}
 
 const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
 
@@ -187,7 +201,8 @@ module.exports = async function handler(req, res) {
     const b64 = j.data?.[0]?.b64_json;
     if (!b64) return bad(res, 502, 'OpenAI returned no image');
 
-    const bytes = Buffer.from(b64, 'base64');
+    const rawBytes = Buffer.from(b64, 'base64');
+    const bytes = await cropTo916(rawBytes);
     const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, bytes, {
       contentType: 'image/png', upsert: true, cacheControl: '604800'
     });

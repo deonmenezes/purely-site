@@ -168,7 +168,7 @@
 .pr-card-source{font-size:11px;color:var(--ink-3);margin-top:8px;font-style:italic}
 
 .pr-mockups{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.pr-mockups .mockup{aspect-ratio:1024/1536}
+.pr-mockups .mockup{aspect-ratio:9/16}
 @media (max-width:900px){
   .pr-mockups{grid-template-columns:repeat(2,1fr)}
   .pr-stats{grid-template-columns:1fr}
@@ -360,7 +360,7 @@
 
 .mockup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .mockup{
-  position:relative;aspect-ratio:1024/1536;background:#fafdfa;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  position:relative;aspect-ratio:9/16;background:#fafdfa;border:1px solid var(--line);border-radius:14px;overflow:hidden;
   display:grid;place-items:center;color:var(--ink-3);font-size:12px;
 }
 .mockup img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}
