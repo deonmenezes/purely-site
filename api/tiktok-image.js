@@ -29,44 +29,66 @@ async function readAnalysis(id) {
 function buildPrompt(product, screen) {
   const verdict = product.verdict || 'Good Choice';
   const score = Number.isFinite(product.score) ? product.score : 80;
-  const subject = product.image_subject || `${product.brand ? product.brand + ' ' : ''}${product.name || 'product'}`;
-  const color = product.image_color || 'green';
+  const brand = (product.brand || '').trim();
+  const name = (product.name || '').trim();
+  const productId = brand && name && !name.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${name}` : (name || brand || 'product');
+  const visualHint = product.image_subject ? ` (visual cues: ${product.image_subject})` : '';
   const ingTop = (product.ingredients || []).slice(0, 8);
   const goodCount = ingTop.filter((x) => /good/i.test(x.label)).length;
   const watchCount = ingTop.filter((x) => /watch/i.test(x.label)).length;
   const avoidCount = ingTop.filter((x) => /avoid/i.test(x.label)).length;
 
-  const common = `Photorealistic 9:19 iPhone 15 Pro screenshot, modern wellness app UI named "Purely". Clean white background. Soft natural shadows. Minimal modern sans-serif typography. Forest-green primary brand color (#2f7a47) with light sage accents (#eaf5ed). Status bar shows 9:41, full signal, full battery. Rounded corners. Realistic mobile app rendering, NOT a sketch.`;
+  // Strict description of the Purely logo so the model renders it consistently
+  const PURELY_BRAND = `BRAND IDENTITY (REQUIRED, must appear visibly at the top-left of the phone screen):
+- Logo: three identical dark forest-green (#2f7a47) curved petal/leaf shapes arranged in a 120-degree rotational pinwheel pattern that visually suggests the letter "P" or a propeller. Each petal has a subtle highlight on its rounded edge and a soft inner shadow. The logo sits inside a soft rounded-square white tile.
+- Wordmark: the word "Purely" in a clean modern semibold sans-serif (similar to Inter/SF Pro), in the same dark forest green, kerned tightly, set immediately to the right of the logo.
+- The logo+wordmark together should occupy roughly 22% of the screen width and sit at the very top of the screen UI (just under the status bar).
+- The Purely logo must be the ONLY brand identity shown; no other app logos.`;
+
+  const common = `Photorealistic 9:19 iPhone 15 Pro screenshot of a wellness ingredient-scanner app called "Purely". Clean white app background. Soft natural shadows around UI cards. Minimal modern sans-serif typography. Forest-green primary brand color (#2f7a47) with light sage accents (#eaf5ed). iOS status bar at the very top: 9:41 left, signal/wifi/battery right. Rounded corners on cards. Realistic premium mobile UI rendering, NOT a sketch or illustration.
+
+${PURELY_BRAND}
+
+PRODUCT FIDELITY (CRITICAL): The product depicted is ${productId}${visualHint}. Render the product EXACTLY as it actually looks in the real world — same packaging shape, same can/bottle/box silhouette, same brand typography style, same dominant colors, same characteristic visual motifs from real life. Do NOT invent a generic product. Do NOT change the product name or flavor. If the product is a well-known brand, use your knowledge of its real-world packaging.`;
 
   if (screen === 'scan') {
     return `${common}
-Screen title at top: "Scan Product" with a back arrow on the left and a help icon on the right.
-Subtitle: "Scan the barcode on any product".
-A photorealistic hand holding a ${color} ${subject}, label visible. The product is centered with a corner-bracket scan frame around the barcode. A horizontal scanning line glows in green across the barcode.
-At the bottom there are two segmented buttons: "Barcode" (selected, dark green pill) and "Photo" (outlined). Below them is a large round white shutter button with thin border. To the left, a small image-gallery icon. To the right, a small flash/lightning icon.
-Background outside the phone: out-of-focus warm neutral.
-Make it feel premium, exactly like a real app screenshot in a marketing carousel. No watermarks, no logos other than "Purely". No text outside the phone screen.`;
+
+SCREEN: Scan Product
+- Below the Purely logo strip, a centered screen title "Scan Product" with a back arrow on the left and a help/question icon on the right.
+- Subtitle line: "Scan the barcode on any product".
+- A photorealistic hand entering from the right, holding the actual ${productId} product. The product label and barcode are clearly visible.
+- Corner-bracket scan frame (white, thick) sits around the visible barcode region. A horizontal green laser scan line crosses the barcode.
+- Bottom UI: two pill buttons — "Barcode" selected (dark forest green pill, white text), "Photo" outlined gray. Below, a large round white shutter button with thin border, a small image-gallery icon to its left, and a small lightning/flash icon to its right.
+- Out-of-focus warm grocery-store background visible outside the phone frame.
+Make it feel exactly like a polished App Store screenshot. No watermarks. No text outside the phone.`;
   }
 
   if (screen === 'analysis') {
     return `${common}
-Screen title at top: "Analysis Report" with a back arrow on the left and a share icon on the right.
-Top card: a small thumbnail image of "${subject}" on the left, product name on the right with a one-line subtitle (flavor or size). On the far right of the card, a circular ring badge showing "${score}" big and "${verdict}" below.
-Section heading: "Health Score". One sentence: "Based on ingredients and nutritional value." A horizontal red→yellow→green gradient bar with a small triangle pointer near the ${score >= 70 ? 'right' : score >= 40 ? 'middle' : 'left'} end. Labels under the bar: "Poor" left, "Excellent" right.
-Highlight card with leaf icon, headline "${verdict === 'Good Choice' ? 'This product is a better choice' : verdict === 'Watch Out' ? 'Some ingredients to watch' : 'Better swaps available'}" and a one-line summary.
-"Report Summary" list of four rows with leading icons: Calories, Sugars, Sodium, Additives — each with a value and a small green/yellow/red pill on the right.
-Big primary green pill button at the bottom: "View Ingredients →".
-Make it look like a polished iOS production app. No real brand logos. No text "Purely" inside the screen except optionally as the app brand top-left if natural.`;
+
+SCREEN: Analysis Report
+- Screen title centered: "Analysis Report" with a back arrow on the left and a share icon on the right.
+- Top product card: a small photorealistic thumbnail of the actual ${productId} product (matching real-life packaging) on the left, the product name "${name || productId}" set in semibold on the right, a one-line subtitle below (e.g., flavor or size). On the far right of the card, a circular ring badge showing the big number "${score}" with "${verdict}" beneath it.
+- Section heading: "Health Score". Caption: "Based on ingredients and nutritional value."
+- A horizontal red→yellow→green gradient bar with a small triangle pointer near the ${score >= 70 ? 'right (green) end' : score >= 40 ? 'middle (yellow)' : 'left (red) end'}. Labels: "Poor" left, "Excellent" right.
+- Highlight card with leaf icon and headline: "${verdict === 'Good Choice' ? 'This product is a better choice' : verdict === 'Watch Out' ? 'Some ingredients to watch' : 'Better swaps available'}" with a one-line supporting sentence.
+- "Report Summary" four rows with leading icons: Calories, Sugars, Sodium, Additives — each with a numeric value on the right and a small green/yellow/red pill labeled Good/Watch Out/Avoid.
+- Bottom: a wide forest-green pill button "View Ingredients →".
+Premium iOS production app look. The Purely logo+wordmark must be visible at the top of the screen.`;
   }
 
   // ingredients
+  const fallbackIng = '"Carbonated Water — Base ingredient [Good]", "Natural Flavor — flavoring [Good]", "Citric Acid — acidity regulator [Good]", "Stevia Leaf Extract — natural sweetener [Watch Out]", "Sucralose — artificial sweetener [Avoid]"';
   return `${common}
-Screen title at top: "Ingredients" with a back arrow on the left.
-Top hero card with light sage background, a leaf-flask icon on the right, headline "We analyzed ${ingTop.length || 10} ingredients" and subtext "Tap any ingredient to learn more".
-Filter pills row: "All (${ingTop.length || 10})" selected (dark green), "Good (${goodCount})" green outline, "Watch Out (${watchCount})" amber outline, "Avoid (${avoidCount})" red outline.
-A vertical list of ingredient rows. Each row: ingredient name on the left, a one-line role under it, a small colored pill on the right ("Good" green, "Watch Out" amber, "Avoid" red), and a chevron. Use these specific entries: ${ingTop.map((x) => `"${(x.name || '').slice(0, 36)} — ${(x.note || x.label || '').slice(0, 30)} [${x.label}]"`).join(', ') || '"Carbonated Water — Base ingredient [Good]", "Natural Flavor — flavoring [Good]", "Citric Acid — acidity regulator [Good]", "Stevia Leaf Extract — natural sweetener [Watch Out]", "Sucralose — artificial sweetener [Avoid]"'}.
-Bottom info card: "Want to learn more about ingredients? Tap any ingredient above to get detailed information." with an info icon.
-Polished real iOS app look. No brand logos other than "Purely".`;
+
+SCREEN: Ingredients (for the product ${productId})
+- Screen title centered: "Ingredients" with a back arrow on the left.
+- Hero card with light sage background, a leaf-in-flask icon on the right, headline "We analyzed ${ingTop.length || 10} ingredients", subtext "Tap any ingredient to learn more".
+- Filter pills row: "All (${ingTop.length || 10})" selected (filled dark forest green), "Good (${goodCount})" green outline, "Watch Out (${watchCount})" amber outline, "Avoid (${avoidCount})" red outline.
+- A vertical list of ingredient rows. Each row: ingredient name (semibold) on the left, a one-line role/category subtitle below, a small colored pill on the right ("Good" green, "Watch Out" amber, "Avoid" red), and a right chevron. Use these specific ingredient entries (do not change them): ${ingTop.map((x) => `"${(x.name || '').slice(0, 40)} — ${(x.note || x.label || '').slice(0, 36)} [${x.label}]"`).join(', ') || fallbackIng}.
+- Bottom info card with info icon: "Want to learn more about ingredients? Tap any ingredient above to get detailed information."
+Premium iOS production app look. The Purely logo+wordmark must be visible at the top of the screen.`;
 }
 
 module.exports = async function handler(req, res) {

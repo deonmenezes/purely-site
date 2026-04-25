@@ -138,7 +138,7 @@ Return STRICT JSON in this exact shape, no prose, no markdown fences:
       ],
       "good": ["short positive points, 0-3"],
       "watchOut": ["short concerns, 0-3"],
-      "image_subject": "concise visual description for an image generator: shape, color, packaging style, container type, label vibe",
+      "image_subject": "DETAILED real-world visual description of this exact product (NOT a generic version). Container shape and size (e.g. 'tall slim 16.9oz aluminum can'), exact dominant colors, the brand's actual typography style and wordmark treatment, characteristic visual motifs on the label (illustrations, icons, colors, layout), and any signature design language. If the product is a recognizable brand (Liquid Death, Olipop, Athletic Greens, RX Bar, etc.) describe its real packaging from your knowledge",
       "image_color": "dominant package color (one word, e.g. 'green', 'beige', 'black')"
     }
   ]
