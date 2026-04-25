@@ -76,13 +76,19 @@ PRODUCT FIDELITY (CRITICAL): The product depicted is ${productId}${visualHint}. 
     return `${common}
 
 SCREEN: Scan Product
-- Below the Purely logo strip, a centered screen title "Scan Product" with a back arrow on the left and a help/question icon on the right.
-- Subtitle line: "Scan the barcode on any product".
-- A photorealistic hand entering from the right, holding the actual ${productId} product. The product label and barcode are clearly visible.
-- Corner-bracket scan frame (white, thick) sits around the visible barcode region. A horizontal green laser scan line crosses the barcode.
+The TOP HALF of the screen is the LIVE iPhone camera viewfinder feed (NOT a polished product render) — it must look like a real candid in-the-aisle phone capture from inside a grocery store:
+- Real human hand entering the frame at a natural angle (slight tilt, fingers visible, maybe a little motion blur), gripping the actual ${productId} product casually — not staged, not centered perfectly.
+- Authentic grocery-store environment behind the product: shelf rows, neighboring products, slightly out-of-focus cluttered background, fluorescent ceiling lighting reflecting off the floor or shelf, warm-cool mixed white balance typical of supermarkets.
+- Slight camera imperfections: subtle glare on the can/bottle, soft natural shadows on the hand, mild lens warmth, NOT studio-lit. NO seamless white background. NO clean studio product photography.
+- Product label and barcode clearly readable but framed organically, the way a normal person would point a phone at a barcode.
+
+The BOTTOM HALF is the polished app UI overlay, sitting on top of the camera feed:
+- Below the Purely logo strip, a screen title "Scan Product" with a back arrow on the left and a help/question icon on the right (semi-transparent dark pill so it stays legible over the camera feed).
+- Subtitle: "Scan the barcode on any product".
+- Corner-bracket scan frame (white, thick rounded corners) sits around the visible barcode region. A horizontal green laser scan line crosses the barcode.
 - Bottom UI: two pill buttons — "Barcode" selected (dark forest green pill, white text), "Photo" outlined gray. Below, a large round white shutter button with thin border, a small image-gallery icon to its left, and a small lightning/flash icon to its right.
-- Out-of-focus warm grocery-store background visible outside the phone frame.
-Make it feel exactly like a polished App Store screenshot. No watermarks. No text outside the phone.`;
+
+Output: a single iPhone screenshot. The camera-feed portion should read as authentic iPhone capture (slightly imperfect, real lighting, real environment), while the UI chrome (Purely logo, headers, scan frame, buttons) is crisp and pixel-perfect.`;
   }
 
   if (screen === 'analysis') {
