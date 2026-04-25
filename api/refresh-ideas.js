@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
     const profile = (body.profile || 'oasis.app').replace(/^@/, '');
     const results = Math.min(Number(body.results || 10), 30);
 
-    const apifyRes = await fetch(`https://api.apify.com/v2/acts/clockworks~tiktok-scraper/runs?token=${APIFY_TOKEN}`, {
+    const apifyRes = await fetch(`https://api.apify.com/v2/acts/clockworks~tiktok-scraper/runs?token=${APIFY_TOKEN}&memory=512`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
