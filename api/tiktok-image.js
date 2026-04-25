@@ -7,8 +7,24 @@
  */
 const { createClient } = require('@supabase/supabase-js');
 const { guard } = require('./_security');
+const fs = require('fs');
+const path = require('path');
 
 const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
+
+// Load the reference mockup once on cold start. This image shows the exact
+// Purely UI style we want every generation to match: scan / analysis / ingredients.
+let _referenceBytes = null;
+function getReferenceBytes() {
+  if (_referenceBytes) return _referenceBytes;
+  try {
+    const p = path.join(process.cwd(), 'assets', 'mockup-reference.png');
+    _referenceBytes = fs.readFileSync(p);
+  } catch (e) {
+    _referenceBytes = null;
+  }
+  return _referenceBytes;
+}
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const supabase = createClient(
   SUPABASE_URL,
@@ -45,7 +61,7 @@ function buildPrompt(product, screen) {
 - The logo+wordmark together should occupy roughly 22% of the screen width and sit at the very top of the screen UI (just under the status bar).
 - The Purely logo must be the ONLY brand identity shown; no other app logos.`;
 
-  const common = `Photorealistic 9:19 iPhone 15 Pro screenshot of a wellness ingredient-scanner app called "Purely". Clean white app background. Soft natural shadows around UI cards. Minimal modern sans-serif typography. Forest-green primary brand color (#2f7a47) with light sage accents (#eaf5ed). iOS status bar at the very top: 9:41 left, signal/wifi/battery right. Rounded corners on cards. Realistic premium mobile UI rendering, NOT a sketch or illustration.
+  const common = `STYLE TEMPLATE: The attached reference image shows the EXACT visual style of the Purely iOS app across 3 screens (Scan Product, Analysis Report, Ingredients). Match the reference EXACTLY — same typography (modern sans-serif), same forest-green primary color (#2f7a47), same light sage accents (#eaf5ed), same card shapes, same rounded-corner radii, same status bar treatment (9:41 + signal/wifi/battery), same "Purely" wordmark placement at the top of the screen, same icon style, same spacing, same shadows. Output ONE single 9:19 iPhone screenshot at 1024x1536, photorealistic premium app rendering, NOT an illustration or sketch.
 
 ${PURELY_BRAND}
 
@@ -119,18 +135,34 @@ module.exports = async function handler(req, res) {
     if (!product) return bad(res, 404, `no product at index ${productIdx}`);
 
     const prompt = buildPrompt(product, screen);
+    const refBytes = getReferenceBytes();
 
-    const aiRes = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` },
-      body: JSON.stringify({
-        model: 'gpt-image-1',
-        prompt,
-        size: '1024x1536',
-        n: 1,
-        quality: 'high'
-      })
-    });
+    let aiRes;
+    if (refBytes) {
+      // Use /v1/images/edits with the reference mockup so the generated image
+      // matches the exact Purely UI style (3-phone mockup template).
+      const fd = new FormData();
+      fd.append('model', 'gpt-image-1');
+      fd.append('prompt', prompt);
+      fd.append('size', '1024x1536');
+      fd.append('n', '1');
+      fd.append('quality', 'high');
+      fd.append('image', new Blob([refBytes], { type: 'image/png' }), 'reference.png');
+      aiRes = await fetch('https://api.openai.com/v1/images/edits', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: fd
+      });
+    } else {
+      // Fallback: text-only generation if reference not bundled
+      aiRes = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: JSON.stringify({
+          model: 'gpt-image-1', prompt, size: '1024x1536', n: 1, quality: 'high'
+        })
+      });
+    }
     if (!aiRes.ok) {
       const t = await aiRes.text();
       return bad(res, 502, `OpenAI ${aiRes.status}: ${t.slice(0, 240)}`);

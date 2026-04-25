@@ -7,7 +7,7 @@
   "trailingSlash": false,
   "functions": {
     "api/tiktok-analyze.js": { "maxDuration": 120 },
-    "api/tiktok-image.js": { "maxDuration": 120 }
+    "api/tiktok-image.js": { "maxDuration": 120, "includeFiles": "assets/mockup-reference.png" }
   },
   "headers": [
     {
