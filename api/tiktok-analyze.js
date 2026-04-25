@@ -4,6 +4,7 @@
  *           → cache to Supabase Storage. Returns the analysis (no images yet).
  */
 const { createClient } = require('@supabase/supabase-js');
+const { guard } = require('./_security');
 
 const APIFY_TOKEN = (process.env.APIFY_TOKEN || '').trim();
 const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
@@ -189,14 +190,14 @@ async function readCache(id) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!(await guard(req, res, { perMinute: 6, dailyKey: 'tiktok-analyze', dailyMax: 200 }))) return;
   if (req.method !== 'POST') return bad(res, 405, 'POST only');
   if (!APIFY_TOKEN) return bad(res, 500, 'APIFY_TOKEN not configured');
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const inputUrl = (body.url || '').trim();
+    if (inputUrl.length > 500) return bad(res, 400, 'url too long');
     const refresh = !!body.refresh;
     if (!inputUrl) return bad(res, 400, 'url required');
 

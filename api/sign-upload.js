@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { guard } = require('./_security');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const supabase = createClient(
@@ -20,10 +21,7 @@ function slugify(s) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!(await guard(req, res, { perMinute: 20, dailyKey: 'sign-upload', dailyMax: 5000 }))) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {

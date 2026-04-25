@@ -6,6 +6,7 @@
  * Cache: each {tiktokId}/{productIdx}-{screen}.png is reused on repeat calls.
  */
 const { createClient } = require('@supabase/supabase-js');
+const { guard } = require('./_security');
 
 const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
@@ -69,8 +70,7 @@ Polished real iOS app look. No brand logos other than "Purely".`;
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!(await guard(req, res, { perMinute: 12, dailyKey: 'tiktok-image', dailyMax: 600 }))) return;
   if (req.method !== 'POST') return bad(res, 405, 'POST only');
   if (!OPENAI_API_KEY) return bad(res, 500, 'OPENAI_API_KEY not configured');
 

@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { guard } = require('./_security');
 
 const APIFY_TOKEN = (process.env.APIFY_TOKEN || '').trim();
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
@@ -12,8 +13,7 @@ const BUCKET = 'influencer-uploads';
 const STATE_PATH = 'ideas/state.json';
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!(await guard(req, res, { perMinute: 2, dailyKey: 'refresh-ideas', dailyMax: 50 }))) return;
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
