@@ -99,10 +99,24 @@ async function fetchTranscript(item) {
   } catch { return []; }
 }
 
+async function fetchAsDataUrl(url, maxBytes = 3 * 1024 * 1024) {
+  if (!url) return null;
+  try {
+    const r = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://www.tiktok.com/' }
+    });
+    if (!r.ok) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length > maxBytes) return null;
+    let ct = (r.headers.get('content-type') || 'image/jpeg').toLowerCase();
+    // OpenAI vision accepts png/jpeg/webp/gif. If unknown, force jpeg
+    if (!/^image\/(png|jpeg|jpg|webp|gif)/.test(ct)) ct = 'image/jpeg';
+    return `data:${ct};base64,${buf.toString('base64')}`;
+  } catch { return null; }
+}
+
 async function gpt4Extract(item, transcript) {
   if (!OPENAI_API_KEY) {
-    // Fallback: heuristic extraction without LLM
-    const text = (item.text || '') + ' ' + transcript.map((t) => t.text).join(' ');
     return {
       summary: 'Add OPENAI_API_KEY to your Vercel env to enable AI product extraction.',
       purelyTakeaway: 'No takeaway generated.',
@@ -110,9 +124,18 @@ async function gpt4Extract(item, transcript) {
     };
   }
 
+  // Multi-frame visual context: cover, originalCover, and dynamicCover (TikTok's
+  // animated preview which already samples multiple frames across the video).
+  const frameUrls = [
+    item.videoMeta?.coverUrl,
+    item.videoMeta?.originalCoverUrl,
+    item.videoMeta?.dynamicCoverUrl
+  ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3);
+  const frameDataUrls = (await Promise.all(frameUrls.map((u) => fetchAsDataUrl(u)))).filter(Boolean);
+
   const transcriptText = transcript.map((t) => `[${t.time}s] ${t.text}`).join('\n').slice(0, 6000);
   const caption = (item.text || '').slice(0, 800);
-  const prompt = `You analyze TikTok videos for "Purely", a wellness/ingredient-scanner app.
+  const prompt = `You analyze TikTok videos for "Purely", a wellness/ingredient-scanner app. You will receive ${frameDataUrls.length} visual frame(s) sampled from the actual video, plus the caption and a time-stamped transcript. Use ALL of this combined data — what you SEE in the frames is the source of truth for product visuals.
 
 The TikTok caption: ${caption || '(none)'}
 
@@ -146,14 +169,19 @@ Return STRICT JSON in this exact shape, no prose, no markdown fences:
 
 Max 3 products. Score reflects ingredient quality + processing level. If no specific products, return products: [].`;
 
+  const userContent = [{ type: 'text', text: prompt }];
+  for (const dataUrl of frameDataUrls) {
+    userContent.push({ type: 'image_url', image_url: { url: dataUrl, detail: 'high' } });
+  }
+
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` },
     body: JSON.stringify({
       model: 'gpt-4o-mini',
       response_format: { type: 'json_object' },
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.5
+      messages: [{ role: 'user', content: userContent }],
+      temperature: 0.4
     })
   });
   if (!res.ok) {
