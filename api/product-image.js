@@ -10,21 +10,38 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
-async function cropTo916(buf) {
+/**
+ * Make the image 9:16 by PADDING (never cropping). Sample the corner pixel
+ * to detect the app's background color and use it for the new top/bottom
+ * margins so the padding blends in (cream/white app backgrounds).
+ */
+async function padTo916(buf) {
   try {
     const img = sharp(buf);
     const meta = await img.metadata();
     const w = meta.width || 1024;
     const h = meta.height || 1536;
-    // 9:16 ratio: width = height * 9/16
-    const targetW = Math.round(h * 9 / 16);
-    if (targetW >= w) return buf; // already narrower than 9:16
-    const left = Math.round((w - targetW) / 2);
-    return await img.extract({ left, top: 0, width: targetW, height: h }).png().toBuffer();
+
+    const targetH = Math.round(w * 16 / 9);
+    if (targetH <= h) return buf; // already at or taller than 9:16
+
+    // Sample top-left pixel for the background color so padding blends in
+    const { data } = await sharp(buf).extract({ left: 4, top: 4, width: 8, height: 8 })
+      .raw().toBuffer({ resolveWithObject: true });
+    const r = data[0], g = data[1], b = data[2];
+
+    const totalPad = targetH - h;
+    const top = Math.floor(totalPad / 2);
+    const bottom = totalPad - top;
+    return await sharp(buf).extend({
+      top, bottom, left: 0, right: 0,
+      background: { r, g, b, alpha: 1 }
+    }).png().toBuffer();
   } catch (e) {
     return buf; // never block on processing failure
   }
 }
+const cropTo916 = padTo916; // alias kept so callers don't change
 
 const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();

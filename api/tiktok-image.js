@@ -17,10 +17,18 @@ async function cropTo916(buf) {
     const meta = await img.metadata();
     const w = meta.width || 1024;
     const h = meta.height || 1536;
-    const targetW = Math.round(h * 9 / 16);
-    if (targetW >= w) return buf;
-    const left = Math.round((w - targetW) / 2);
-    return await img.extract({ left, top: 0, width: targetW, height: h }).png().toBuffer();
+    const targetH = Math.round(w * 16 / 9);
+    if (targetH <= h) return buf;
+    const { data } = await sharp(buf).extract({ left: 4, top: 4, width: 8, height: 8 })
+      .raw().toBuffer({ resolveWithObject: true });
+    const r = data[0], g = data[1], b = data[2];
+    const totalPad = targetH - h;
+    const top = Math.floor(totalPad / 2);
+    const bottom = totalPad - top;
+    return await sharp(buf).extend({
+      top, bottom, left: 0, right: 0,
+      background: { r, g, b, alpha: 1 }
+    }).png().toBuffer();
   } catch { return buf; }
 }
 
