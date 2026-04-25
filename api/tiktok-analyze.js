@@ -273,7 +273,11 @@ module.exports = async function handler(req, res) {
       analysis,
       generatedAt: new Date().toISOString()
     };
-    await saveAnalysis(payload);
+    // Only cache if we actually got useful data (avoid persisting empty failure)
+    const hasData = (payload.transcript?.length || 0) > 0 ||
+                    (payload.analysis?.products?.length || 0) > 0 ||
+                    (payload.tiktok?.caption || '').length > 5;
+    if (hasData) await saveAnalysis(payload);
     return res.status(200).json(payload);
   } catch (e) {
     return bad(res, 500, e.message || 'Failed');
