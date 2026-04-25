@@ -12,18 +12,22 @@ const path = require('path');
 
 const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
 
-// Load the reference mockup once on cold start. This image shows the exact
-// Purely UI style we want every generation to match: scan / analysis / ingredients.
+// Load reference assets once on cold start.
 let _referenceBytes = null;
+let _logoBytes = null;
 function getReferenceBytes() {
   if (_referenceBytes) return _referenceBytes;
   try {
-    const p = path.join(process.cwd(), 'assets', 'mockup-reference.png');
-    _referenceBytes = fs.readFileSync(p);
-  } catch (e) {
-    _referenceBytes = null;
-  }
+    _referenceBytes = fs.readFileSync(path.join(process.cwd(), 'assets', 'mockup-reference.png'));
+  } catch { _referenceBytes = null; }
   return _referenceBytes;
+}
+function getLogoBytes() {
+  if (_logoBytes) return _logoBytes;
+  try {
+    _logoBytes = fs.readFileSync(path.join(process.cwd(), 'assets', 'purely-logo.webp'));
+  } catch { _logoBytes = null; }
+  return _logoBytes;
 }
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const supabase = createClient(
@@ -55,11 +59,12 @@ function buildPrompt(product, screen) {
   const avoidCount = ingTop.filter((x) => /avoid/i.test(x.label)).length;
 
   // Strict description of the Purely logo so the model renders it consistently
-  const PURELY_BRAND = `BRAND IDENTITY (REQUIRED, must appear visibly at the top-left of the phone screen):
-- Logo: three identical dark forest-green (#2f7a47) curved petal/leaf shapes arranged in a 120-degree rotational pinwheel pattern that visually suggests the letter "P" or a propeller. Each petal has a subtle highlight on its rounded edge and a soft inner shadow. The logo sits inside a soft rounded-square white tile.
-- Wordmark: the word "Purely" in a clean modern semibold sans-serif (similar to Inter/SF Pro), in the same dark forest green, kerned tightly, set immediately to the right of the logo.
-- The logo+wordmark together should occupy roughly 22% of the screen width and sit at the very top of the screen UI (just under the status bar).
-- The Purely logo must be the ONLY brand identity shown; no other app logos.`;
+  const PURELY_BRAND = `BRAND IDENTITY (REQUIRED — MUST appear visibly inside the generated phone screen):
+- The SECOND attached reference image IS the Purely logo. Use it EXACTLY as-is — do not redraw, do not stylize, do not change colors or shape. Place it pixel-faithfully.
+- Logo describes: three dark forest-green (#2f7a47) curved petal/leaf shapes arranged in 120° rotational pinwheel pattern (suggests a stylized "P"). Subtle highlight on each rounded edge. Inside a softly rounded white app-icon tile.
+- Wordmark: the word "Purely" in a clean modern semibold sans-serif (Inter/SF Pro), same dark forest green, kerned tight, set immediately to the right of the logo (or beneath it as in the reference template).
+- Position: at the TOP of the phone screen content area, just under the iOS status bar. Visible on every screen variant (Scan / Analysis / Ingredients).
+- This is the ONLY brand identity shown — no other app logos.`;
 
   const common = `STYLE TEMPLATE: The attached reference image shows the EXACT visual style of the Purely iOS app across 3 screens (Scan Product, Analysis Report, Ingredients). Match the reference EXACTLY — same typography (modern sans-serif), same forest-green primary color (#2f7a47), same light sage accents (#eaf5ed), same card shapes, same rounded-corner radii, same status bar treatment (9:41 + signal/wifi/battery), same "Purely" wordmark placement at the top of the screen, same icon style, same spacing, same shadows. Output ONE single 9:19 iPhone screenshot at 1024x1536, photorealistic premium app rendering, NOT an illustration or sketch.
 
@@ -136,18 +141,23 @@ module.exports = async function handler(req, res) {
 
     const prompt = buildPrompt(product, screen);
     const refBytes = getReferenceBytes();
+    const logoBytes = getLogoBytes();
 
     let aiRes;
     if (refBytes) {
-      // Use /v1/images/edits with the reference mockup so the generated image
-      // matches the exact Purely UI style (3-phone mockup template).
+      // /v1/images/edits with multiple reference images:
+      //   1. UI style template (3-phone Purely mockup)
+      //   2. Purely brand logo (so the wordmark+pinwheel match exactly)
       const fd = new FormData();
       fd.append('model', 'gpt-image-1');
       fd.append('prompt', prompt);
       fd.append('size', '1024x1536');
       fd.append('n', '1');
       fd.append('quality', 'high');
-      fd.append('image', new Blob([refBytes], { type: 'image/png' }), 'reference.png');
+      fd.append('image[]', new Blob([refBytes], { type: 'image/png' }), 'ui-template.png');
+      if (logoBytes) {
+        fd.append('image[]', new Blob([logoBytes], { type: 'image/webp' }), 'purely-logo.webp');
+      }
       aiRes = await fetch('https://api.openai.com/v1/images/edits', {
         method: 'POST',
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
