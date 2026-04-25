@@ -7,7 +7,9 @@
   "trailingSlash": false,
   "functions": {
     "api/tiktok-analyze.js": { "maxDuration": 120 },
-    "api/tiktok-image.js": { "maxDuration": 120, "includeFiles": "assets/{mockup-reference.png,purely-logo.webp}" }
+    "api/tiktok-image.js": { "maxDuration": 120, "includeFiles": "assets/{mockup-reference.png,purely-logo.webp}" },
+    "api/analyze-product.js": { "maxDuration": 120 },
+    "api/product-image.js": { "maxDuration": 120, "includeFiles": "assets/{purely-product-ref.png,purely-product-ref-2.png,purely-logo.webp}" }
   },
   "headers": [
     {

@@ -389,4 +389,294 @@
     }));
     btn.classList.remove('busy'); btn.disabled = false;
   }
+
+  /* ===================================================================
+   *  Photo flow — Upload product photo, analyze with ruthless prompt,
+   *  generate 4 Purely mockup screens.
+   * =================================================================== */
+  const tabs = document.querySelectorAll('.tt-tab');
+  const photoSection = $('#tt-photo');
+  const photoInput = $('#photo-input');
+  const photoDrop = $('#photo-drop');
+  const photoPreview = $('#photo-preview');
+  const photoThumb = $('#photo-thumb');
+  const ppName = $('#pp-name');
+  const ppSize = $('#pp-size');
+  const ppClear = $('#pp-clear');
+  const ppGo = $('#pp-go');
+
+  let pickedFile = null;
+
+  tabs.forEach((t) => t.addEventListener('click', () => {
+    tabs.forEach((x) => x.classList.toggle('active', x === t));
+    const mode = t.dataset.mode;
+    form.hidden = mode !== 'url';
+    photoSection.hidden = mode !== 'photo';
+  }));
+
+  function fmtBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  function setPhoto(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { showToast('Pick an image file', 'err'); return; }
+    if (file.size > 8 * 1024 * 1024) { showToast('Photo over 8MB — pick a smaller one', 'err'); return; }
+    pickedFile = file;
+    photoThumb.src = URL.createObjectURL(file);
+    ppName.textContent = file.name;
+    ppSize.textContent = fmtBytes(file.size);
+    photoPreview.hidden = false;
+    photoDrop.hidden = true;
+  }
+
+  photoInput.addEventListener('change', (e) => setPhoto(e.target.files[0]));
+  ppClear.addEventListener('click', () => {
+    pickedFile = null;
+    photoPreview.hidden = true;
+    photoDrop.hidden = false;
+    photoInput.value = '';
+  });
+  ['dragenter', 'dragover'].forEach((ev) => photoDrop.addEventListener(ev, (e) => {
+    e.preventDefault(); photoDrop.classList.add('drag');
+  }));
+  ['dragleave', 'drop'].forEach((ev) => photoDrop.addEventListener(ev, (e) => {
+    e.preventDefault(); photoDrop.classList.remove('drag');
+  }));
+  photoDrop.addEventListener('drop', (e) => {
+    if (e.dataTransfer?.files?.length) setPhoto(e.dataTransfer.files[0]);
+  });
+
+  ppGo.addEventListener('click', () => analyzePhoto());
+
+  async function analyzePhoto() {
+    if (!pickedFile) return;
+    hideError();
+    progress.hidden = false;
+    results.hidden = true;
+    results.innerHTML = '';
+    setProgress(8, '<strong>Uploading photo</strong>…');
+    setStep('scrape', 'active');
+    setStep('transcribe', null); setStep('extract', null); setStep('images', null);
+
+    let imageUrl;
+    try {
+      // 1. Get signed URL
+      const sign = await fetch('/api/sign-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: pickedFile.name, contentType: pickedFile.type, size: pickedFile.size, handle: 'product' })
+      });
+      const signJ = await sign.json();
+      if (!sign.ok) throw new Error(signJ.error || 'upload sign failed');
+
+      // 2. Upload via signed URL
+      const put = await fetch(signJ.signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': pickedFile.type, 'x-upsert': 'true' },
+        body: pickedFile
+      });
+      if (!put.ok) throw new Error('upload PUT failed (' + put.status + ')');
+      imageUrl = signJ.publicUrl;
+    } catch (e) {
+      showError('Upload error: ' + e.message);
+      ppGo.disabled = false; ppGo.classList.remove('busy');
+      progress.hidden = true;
+      return;
+    }
+    setStep('scrape', 'done');
+    setStep('transcribe', 'done');
+    setProgress(35, '<strong>Analyzing</strong> with Purely\'s ruthless rubric…');
+
+    // 3. Analyze
+    let payload;
+    try {
+      const r = await fetch('/api/analyze-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl, refresh: forceRefresh })
+      });
+      payload = await r.json();
+      if (!r.ok) throw new Error(payload.error || 'analysis failed');
+    } catch (e) {
+      showError('Analysis error: ' + e.message);
+      ppGo.disabled = false; ppGo.classList.remove('busy');
+      return;
+    }
+    setStep('extract', 'done');
+    setProgress(60, `<strong>Score: ${payload.analysis?.score ?? '?'} / 100</strong> · generating Purely screens…`);
+    renderProductResult(payload, imageUrl);
+    setStep('images', 'active');
+
+    // 4. Generate 4 mockups in parallel
+    const screens = ['summary', 'inside', 'detail', 'toxin'];
+    const total = screens.length;
+    let done = 0;
+    await Promise.all(screens.map(async (s) => {
+      try {
+        const r = await fetch('/api/product-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ analysisId: payload.id, screen: s, refresh: forceRefresh })
+        });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || 'image failed');
+        updateProductMockup(s, j.url);
+      } catch (e) {
+        updateProductMockup(s, null, e.message);
+      } finally {
+        done++;
+        setProgress(60 + Math.round((done / total) * 40), `<strong>${done}/${total}</strong> mockups generated`);
+      }
+    }));
+    setStep('images', 'done');
+    setProgress(100, '<strong>Done.</strong>');
+  }
+
+  function dotColor(verdict) {
+    return verdict === 'good' ? '#4ea96b' : verdict === 'warn' ? '#e8b84a' : '#e26a6a';
+  }
+
+  function renderProductResult(payload, imageUrl) {
+    const a = payload.analysis || {};
+    const p = a.product || {};
+    const score = Number.isFinite(a.score) ? a.score : 50;
+    const verdict = a.verdict || 'Okay';
+    const ringColor = score < 30 ? '#c64545' : score < 60 ? '#d49a2e' : '#4ea96b';
+    const ringDash = (score / 100) * 151;
+    const harmCount = a.harmfulCount ?? (a.harmfulIngredients?.length || 0) + (a.contaminants?.length || 0);
+    const benCount = a.beneficialCount ?? (a.beneficialAttributes?.length || 0);
+    const mp = a.microplastics || {};
+
+    results.hidden = false;
+    results.innerHTML = `
+      <div class="product-result">
+        <div class="pr-head">
+          <div class="pr-photo"><img src="${escapeHtml(imageUrl)}" alt="" /></div>
+          <div>
+            <h2 class="pr-name">${escapeHtml(p.name || 'Product')}</h2>
+            ${p.brand ? `<div class="pr-brand">${escapeHtml(p.brand)}</div>` : ''}
+            <div class="pr-chips">
+              ${p.subcategory ? `<span class="pr-chip">${escapeHtml(p.subcategory)}</span>` : ''}
+              <span class="pr-chip warn">⚠ Toxin report</span>
+            </div>
+          </div>
+          <div class="pr-score">
+            <svg viewBox="0 0 60 60">
+              <circle cx="30" cy="30" r="24" stroke="#eee" stroke-width="5" fill="none"/>
+              <circle cx="30" cy="30" r="24" stroke="${ringColor}" stroke-width="5" fill="none" stroke-linecap="round"
+                stroke-dasharray="151" stroke-dashoffset="${151 - ringDash}" transform="rotate(-90 30 30)"/>
+            </svg>
+            <div class="pr-score-text">
+              <strong>${score}</strong>
+              <span>${escapeHtml(verdict)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pr-stats">
+          <div class="pr-stat ${harmCount > 0 ? 'bad' : ''}">
+            <span class="icon"><svg viewBox="0 0 24 24"><path d="M12 2l11 19H1L12 2zm0 7v6m0 3v.01" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div class="pr-stat-meta"><strong>${harmCount}</strong><span>Harmful substances</span></div>
+          </div>
+          <div class="pr-stat">
+            <span class="icon"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div class="pr-stat-meta"><strong>${benCount}</strong><span>Beneficial substances</span></div>
+          </div>
+          <div class="pr-stat ${(mp.status === 'Detected' || mp.status === 'Likely') ? 'bad' : 'warn'}">
+            <span class="icon"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke="currentColor" stroke-width="2" fill="none"/><path d="M8 12l3 3 5-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span>
+            <div class="pr-stat-meta"><strong>${escapeHtml(mp.status || 'No data')}</strong><span>Microplastics</span></div>
+          </div>
+        </div>
+
+        ${a.headline ? `<div class="pr-headline">${escapeHtml(a.headline)}</div>` : ''}
+
+        <div class="pr-section">
+          <h3>What's inside</h3>
+          <div class="pr-list">
+            ${(a.contaminants || []).slice(0, 8).map((c) => `
+              <div class="pr-card bad">
+                <div class="pr-card-hd">
+                  <strong>${escapeHtml(c.name)}</strong>
+                  <span class="pill bad">${escapeHtml(c.multiplier || c.status || 'Detected')}</span>
+                </div>
+                ${c.amount ? `<div class="pr-card-amount">${escapeHtml(c.amount)}${c.limit ? ' · limit ' + escapeHtml(c.limit) : ''}${c.limitSource ? ' (' + escapeHtml(c.limitSource) + ')' : ''}</div>` : ''}
+                <div class="pr-card-body">${escapeHtml(c.concern || '')}</div>
+                ${c.source ? `<div class="pr-card-source">Source: ${escapeHtml(c.source)}</div>` : ''}
+              </div>
+            `).join('')}
+            ${(a.harmfulIngredients || []).slice(0, 8).map((h) => `
+              <div class="pr-card bad">
+                <div class="pr-card-hd"><strong>${escapeHtml(h.name)}</strong><span class="pill bad">Harmful</span></div>
+                <div class="pr-card-body">${escapeHtml(h.reason || '')}</div>
+                ${h.source ? `<div class="pr-card-source">Source: ${escapeHtml(h.source)}</div>` : ''}
+              </div>
+            `).join('')}
+            ${(a.beneficialAttributes || []).slice(0, 6).map((b) => `
+              <div class="pr-card good">
+                <div class="pr-card-hd"><strong>${escapeHtml(b.attribute)}</strong><span class="pill">Good</span></div>
+                <div class="pr-card-body">${escapeHtml(b.why || '')}</div>
+                ${b.source ? `<div class="pr-card-source">Source: ${escapeHtml(b.source)}</div>` : ''}
+              </div>
+            `).join('')}
+            ${((a.contaminants||[]).length + (a.harmfulIngredients||[]).length + (a.beneficialAttributes||[]).length === 0)
+              ? `<div class="pr-card"><div class="pr-card-body">No specific substances were extracted from the photo. Try a clearer shot of the label.</div></div>` : ''}
+          </div>
+        </div>
+
+        <div class="pr-section">
+          <h3>Generated Purely screens</h3>
+          <div class="pr-mockups">
+            ${['summary', 'inside', 'detail', 'toxin'].map((s) => `
+              <div class="mockup" data-screen="${s}">
+                <span class="mockup-label">${s === 'summary' ? 'Summary' : s === 'inside' ? "What's Inside" : s === 'detail' ? 'Detail' : 'Toxin Report'}</span>
+                <div class="skel"></div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        ${(a.sources || []).length ? `
+          <div class="pr-section">
+            <h3>Sources</h3>
+            <div class="pr-list">
+              ${a.sources.slice(0, 12).map((s) => `
+                <div class="pr-card"><div class="pr-card-body"><strong>${escapeHtml(s.name || '')}</strong> — ${escapeHtml(s.description || '')}${s.url ? ` · <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" style="color:var(--green-700)">link</a>` : ''}</div></div>
+              `).join('')}
+            </div>
+          </div>` : ''}
+      </div>
+    `;
+  }
+
+  function updateProductMockup(screen, url, errMsg) {
+    const tile = document.querySelector(`.pr-mockups .mockup[data-screen="${screen}"]`);
+    if (!tile) return;
+    if (url) {
+      tile.querySelector('.skel')?.remove();
+      tile.querySelector('img')?.remove();
+      tile.querySelector('.err-msg')?.remove();
+      tile.querySelector('.dl-btn')?.remove();
+      const img = document.createElement('img');
+      img.src = url; img.loading = 'lazy';
+      tile.appendChild(img);
+      const dl = document.createElement('button');
+      dl.className = 'dl-btn'; dl.title = 'Download';
+      dl.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
+      dl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dl.classList.add('busy');
+        downloadMockup(url, `purely-${screen}.png`).finally(() => dl.classList.remove('busy'));
+      });
+      tile.appendChild(dl);
+    } else {
+      tile.querySelector('.skel')?.remove();
+      const e = document.createElement('div');
+      e.className = 'err-msg';
+      e.textContent = (errMsg || 'failed').slice(0, 120);
+      tile.appendChild(e);
+    }
+  }
 })();
