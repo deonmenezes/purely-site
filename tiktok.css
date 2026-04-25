@@ -236,10 +236,28 @@
 
 .mockup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .mockup{
-  position:relative;aspect-ratio:9/19;background:#0c0c0c;border-radius:14px;overflow:hidden;
+  position:relative;aspect-ratio:1024/1536;background:#fafdfa;border:1px solid var(--line);border-radius:14px;overflow:hidden;
   display:grid;place-items:center;color:var(--ink-3);font-size:12px;
 }
-.mockup img{width:100%;height:100%;object-fit:cover;display:block}
+.mockup img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}
+
+.mockup .dl-btn{
+  position:absolute;top:10px;right:10px;z-index:3;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(255,255,255,.95);color:var(--green-800);
+  border:0;cursor:pointer;display:grid;place-items:center;
+  box-shadow:0 6px 14px rgba(0,0,0,.25);
+  opacity:0;transform:translateY(-4px);
+  transition:opacity .2s, transform .2s, background .15s, color .15s;
+}
+.mockup .dl-btn svg{width:16px;height:16px}
+.mockup:hover .dl-btn{opacity:1;transform:translateY(0)}
+.mockup .dl-btn:hover{background:var(--green-700);color:#fff}
+.mockup .dl-btn.busy{opacity:1;background:var(--green-700);color:#fff}
+.mockup .dl-btn.busy svg{animation:spin 1s linear infinite}
+@media (hover:none){
+  .mockup .dl-btn{opacity:1;transform:none}
+}
 .mockup-label{
   position:absolute;top:10px;left:10px;
   background:rgba(255,255,255,.95);color:var(--green-800);

@@ -310,6 +310,24 @@
     `;
   }
 
+  async function downloadMockup(url, filename) {
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      const blob = await r.blob();
+      const obj = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = obj;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(obj), 1000);
+      showToast('Saved', 'ok');
+    } catch (e) {
+      window.open(url, '_blank', 'noopener');
+    }
+  }
+
   function updateMockup(productIdx, screen, url, errMsg) {
     const tile = document.querySelector(`.mockup[data-product="${productIdx}"][data-screen="${screen}"]`);
     if (!tile) return;
@@ -317,11 +335,27 @@
       tile.querySelector('.skel')?.remove();
       tile.querySelector('img')?.remove();
       tile.querySelector('.err-msg')?.remove();
+      tile.querySelector('.dl-btn')?.remove();
+
       const img = document.createElement('img');
       img.src = url;
       img.alt = `${screen} mockup`;
       img.loading = 'lazy';
       tile.appendChild(img);
+
+      const dl = document.createElement('button');
+      dl.className = 'dl-btn';
+      dl.title = 'Download';
+      dl.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
+      dl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = tile.closest('.product-card');
+        const productName = card?.querySelector('.pc-head h3')?.textContent?.trim() || 'product';
+        const safeName = productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        dl.classList.add('busy');
+        downloadMockup(url, `purely-${safeName}-${screen}.png`).finally(() => dl.classList.remove('busy'));
+      });
+      tile.appendChild(dl);
     } else {
       tile.querySelector('.skel')?.remove();
       tile.querySelector('.err-msg')?.remove();
