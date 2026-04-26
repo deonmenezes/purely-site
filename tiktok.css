@@ -1817,8 +1817,8 @@ body.ing-modal-open{overflow:hidden}
   padding:4px 22px 10px;
 }
 .pa-stat-row{
-  display:grid;grid-template-columns:24px 1fr auto auto;
-  align-items:center;gap:14px;
+  display:grid;grid-template-columns:24px minmax(90px, auto) 1fr auto;
+  align-items:center;gap:12px;
   padding:13px 0;
   border-bottom:1px solid transparent;
   transition:background .12s;
@@ -1831,13 +1831,16 @@ body.ing-modal-open{overflow:hidden}
 }
 .pa-stat-ico svg{width:22px;height:22px;display:block}
 .pa-stat-lbl{
-  font-size:16px;font-weight:500;color:#1F1D1A;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:15px;font-weight:500;color:#1F1D1A;
+  line-height:1.3;
+  /* allow wrapping so longer labels like "Microplastics" don't get clipped */
+  word-break:normal;overflow-wrap:break-word;
 }
 .pa-stat-val{
-  font-size:15px;font-weight:700;color:#1F1D1A;
-  text-align:right;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50%;
+  font-size:14px;font-weight:700;color:#1F1D1A;
+  text-align:right;line-height:1.3;
+  word-break:normal;overflow-wrap:break-word;
+  min-width:0;
 }
 .pa-stat-dot{
   width:9px;height:9px;border-radius:50%;background:#9B958D;flex:0 0 9px;

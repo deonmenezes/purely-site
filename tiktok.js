@@ -505,11 +505,13 @@
     const PA_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l10 17H2L12 3zm0 7v5m0 3v.01" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     const PA_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/></svg>';
 
-    // Build the compact substance rows shown under the score (top 4 findings).
-    const paRowsHtml = (findings.length ? findings.slice(0, 4) : []).map((f, idx) => {
+    // Build the compact substance rows shown under the score (top 6 findings).
+    const paRowsHtml = (findings.length ? findings.slice(0, 6) : []).map((f, idx) => {
       const dotClass = f.kind === 'bad' ? 'bad' : f.kind === 'good' ? 'good' : 'neutral';
-      const lbl = paQualityLabel(f.name);
-      const isWarnIcon = /sugar|salt|sodium|preserv|color|microplastic|metal/.test(String(f.name || '').toLowerCase()) && f.kind === 'bad';
+      // Prefer the AI-supplied row label (from uiSummary.topAttributes); fall
+      // back to keyword-derived labels (Flour quality, Sugar, Microplastics…).
+      const lbl = (f.label && String(f.label).trim()) ? f.label : paQualityLabel(f.name);
+      const isWarnIcon = /sugar|salt|sodium|preserv|color|microplastic|metal|bpa|phthal/.test(String(f.name + ' ' + lbl).toLowerCase()) && f.kind === 'bad';
       const ico = isWarnIcon ? PA_WARN : PA_LEAF;
       const valExtra = f.amount ? ` (${escapeHtml(f.amount)})` : (f.pill && /top \d/i.test(f.pill) ? ` (${escapeHtml(f.pill)})` : '');
       return `
@@ -745,14 +747,33 @@
 
   function renderPhotoScreen(tile, payload, imageUrl) {
     const a = payload.analysis || {}; const p = a.product || {};
+    const ui = a.uiSummary || {};
     const findings = [];
+
+    // Prefer the AI's pre-built uiSummary.topAttributes when present —
+    // each entry already has a row label ("Flour quality", "Microplastics"),
+    // a value ("Enriched Flour", "Detected"), and a verdict.
+    if (Array.isArray(ui.topAttributes) && ui.topAttributes.length) {
+      ui.topAttributes.slice(0, 6).forEach((t) => {
+        const verdict = String(t.verdict || '').toLowerCase();
+        const kind = /bad|harm/.test(verdict) ? 'bad'
+                  : /good|benef/.test(verdict) ? 'good' : 'neutral';
+        findings.push({
+          kind, name: t.value || t.label || 'Concern',
+          label: t.label || '',
+          body: t.note || '',
+          pill: t.label || ''
+        });
+      });
+    }
+
     (a.contaminants || []).slice(0, 4).forEach((c) => findings.push({
       kind: 'bad', name: c.name, pill: c.multiplier || c.status || 'Detected',
       amount: c.amount || null, limit: c.limit || null,
       limitSource: c.limitSource || '', multiplier: c.multiplier || '',
       body: c.concern || '', source: c.source || ''
     }));
-    (a.harmfulIngredients || []).slice(0, 3).forEach((h) => findings.push({
+    (a.harmfulIngredients || []).slice(0, 4).forEach((h) => findings.push({
       kind: 'bad', name: h.name, pill: 'Harmful',
       body: h.reason || '', source: h.source || ''
     }));

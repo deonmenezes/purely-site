@@ -24,6 +24,12 @@ function bad(res, code, msg) { return res.status(code).json({ error: msg }); }
 const SYSTEM_PROMPT = `${PURELY_RULES}
 
 Return STRICT JSON in this exact shape — no prose, no markdown fences. Every field must be populated. Microplastics MUST have a real status (use the rule above; never default to "No data" for bottled water or other well-studied categories). Contaminants/harmful/beneficial arrays should reflect everything you know about this product, not just the visible label.
+
+CRITICAL CONTENT REQUIREMENTS:
+- contaminants[] + harmfulIngredients[] combined MUST contain at least 3 entries for any product. Use category knowledge: bottled water → microplastics, BPA/phthalates from packaging, fluoride, sodium, source disclosure; processed foods → enriched flour, refined oils, added sugar, preservatives, artificial colors; protein bars → sweeteners, palm oil, soy lecithin, emulsifiers; dairy → hormones, antibiotics residues; cosmetics → parabens, fragrance, sulfates.
+- beneficialAttributes[] should list any genuine positives (e.g. "BPA-free packaging", "Triple filtration", "Whole grain", "Cold-pressed", "Third-party tested"). At least 1 entry when applicable.
+- uiSummary.topAttributes[] MUST contain 4-6 entries. Each entry is a "category quality / specific value" row shown directly in the app UI. Examples: {label:"Microplastics", value:"Detected (12 particles/L)", verdict:"bad"}, {label:"Source water", value:"Public tap (filtered)", verdict:"warn"}, {label:"Packaging", value:"PET plastic — phthalates risk", verdict:"bad"}, {label:"Mineral content", value:"Negligible", verdict:"warn"}, {label:"Sodium", value:"<5mg", verdict:"good"}.
+- Never return empty arrays unless the product genuinely has no concerns. Use real-world product knowledge to enrich the analysis beyond what's visible on the label.
 {
   "product": {
     "name": "string",
