@@ -1747,7 +1747,12 @@ body.ing-modal-open{overflow:hidden}
   background:#EDE8DD;
   padding:8px 18px;border-radius:99px;
 }
-.pa-hdr-logo{width:22px;height:22px;object-fit:contain;display:block}
+.pa-hdr-logo{
+  width:24px;height:24px;
+  object-fit:contain;
+  display:inline-block;flex-shrink:0;
+  vertical-align:middle;
+}
 .pa-hdr-text{font-size:17px;font-weight:700;color:#1F1D1A;letter-spacing:-.01em}
 
 /* Hero image card — centered, white, soft shadow */
@@ -1862,7 +1867,26 @@ body.ing-modal-open{overflow:hidden}
   padding:18px 0 22px;
   font-size:14px;color:#9B958D;font-weight:500;
 }
-.pa-foot-logo{width:18px;height:18px;object-fit:contain;display:block}
+.pa-foot-logo{
+  width:20px;height:20px;
+  object-fit:contain;
+  display:inline-block;flex-shrink:0;
+  vertical-align:middle;
+}
+/* Inside-pill (small "Purely App" pill on the "What's inside" section) */
+.pa-inside-pill-logo{
+  width:16px;height:16px;
+  object-fit:contain;
+  display:inline-block;flex-shrink:0;
+  vertical-align:middle;
+}
+/* Defensive: make sure no global img reset hides the Purely logo */
+.pa-screen img.pa-hdr-logo,
+.pa-screen img.pa-foot-logo,
+.pa-screen img.pa-inside-pill-logo{
+  visibility:visible;opacity:1;
+  background:transparent;
+}
 .pa-foot-name{color:#1F1D1A;font-weight:700;font-size:15px;letter-spacing:-.005em}
 
 /* Inside the iPhone-shaped mockup tile, the screen scrolls naturally and

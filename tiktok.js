@@ -514,11 +514,17 @@
       const isWarnIcon = /sugar|salt|sodium|preserv|color|microplastic|metal|bpa|phthal/.test(String(f.name + ' ' + lbl).toLowerCase()) && f.kind === 'bad';
       const ico = isWarnIcon ? PA_WARN : PA_LEAF;
       const valExtra = f.amount ? ` (${escapeHtml(f.amount)})` : (f.pill && /top \d/i.test(f.pill) ? ` (${escapeHtml(f.pill)})` : '');
+      // Row right-column priority:
+      // 1. f.value (AI's pre-formatted value from uiSummary.topAttributes)
+      // 2. f.name (substance name from contaminants/harmful arrays)
+      // Avoid showing the same string twice when label and name match.
+      const valueText = (f.value && String(f.value).trim()) ? f.value
+                       : (lbl !== f.name ? f.name : (f.amount || f.pill || ''));
       return `
         <div class="pa-stat-row" data-idx="${idx}">
           <span class="pa-stat-ico">${ico}</span>
           <span class="pa-stat-lbl">${escapeHtml(lbl)}</span>
-          <span class="pa-stat-val">${escapeHtml(f.name || '—')}${valExtra}</span>
+          <span class="pa-stat-val">${escapeHtml(valueText || '—')}${valExtra}</span>
           <span class="pa-stat-dot ${dotClass}"></span>
         </div>`;
     }).join('') || `<div class="pa-stat-empty">No specific concerns extracted from this product.</div>`;
@@ -758,10 +764,17 @@
         const verdict = String(t.verdict || '').toLowerCase();
         const kind = /bad|harm/.test(verdict) ? 'bad'
                   : /good|benef/.test(verdict) ? 'good' : 'neutral';
+        // The CARD name is the category (label) so cards read like:
+        // "Protein Content" / "Sugar" / "Microplastics" — not "20g per bar"
+        // or "Detected". The row right-column gets a separate `value` field.
         findings.push({
-          kind, name: t.value || t.label || 'Concern',
+          kind,
+          name: t.label || t.value || 'Concern',
           label: t.label || '',
-          body: t.note || '',
+          value: t.value || '',
+          body: t.value
+            ? `${t.value}${t.note ? ` — ${t.note}` : ''}`
+            : (t.note || ''),
           pill: t.label || ''
         });
       });
