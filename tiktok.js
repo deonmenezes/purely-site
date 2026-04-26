@@ -595,6 +595,32 @@
           <img src="${PURELY_LOGO_PATH}" alt="" class="pa-foot-logo">
           <strong class="pa-foot-name">Purely</strong>
         </div>
+
+        ${findings.length ? `
+          <div class="pa-inside">
+            <div class="pa-inside-hd">
+              <h3 class="pa-inside-title">What's inside</h3>
+              <span class="pa-inside-pill">
+                <img src="${PURELY_LOGO_PATH}" alt="" class="pa-inside-pill-logo">
+                <span>Purely App</span>
+              </span>
+            </div>
+            <div class="pa-inside-list">
+              ${findings.map((f, idx) => {
+                const stat = f.kind === 'bad' ? 'bad' : f.kind === 'good' ? 'good' : 'neutral';
+                const desc = f.body || (stat === 'bad'
+                  ? 'Flagged for review based on third-party testing.'
+                  : stat === 'good'
+                    ? 'Generally regarded as safe and beneficial at typical levels.'
+                    : 'Common ingredient with no notable concerns.');
+                return `
+                  <div class="pa-inside-card ${stat}" data-finding-idx="${idx}">
+                    <div class="pa-inside-name">${escapeHtml((f.name || '').slice(0, 60))}</div>
+                    <div class="pa-inside-desc">${escapeHtml(String(desc).slice(0, 220))}</div>
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>` : ''}
       </div>
       ${makeDownloadBtn(filename)}
       ${makeExpandBtn()}
@@ -647,6 +673,16 @@
           productScore: safeScore
         });
       });
+    });
+
+    // Tapping any "What's inside" card opens the same detail modal as the
+    // matching substance row — keeps the two sections behaviourally aligned.
+    tile.querySelectorAll('.pa-inside-card').forEach((card) => {
+      const idx = Number(card.dataset.findingIdx);
+      const row = tile.querySelectorAll('.pa-stat-row')[idx];
+      if (!row) return;
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', () => row.click());
     });
   }
 

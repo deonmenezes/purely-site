@@ -1867,6 +1867,56 @@ body.ing-modal-open{overflow:hidden}
    button until hover (matches existing pattern). */
 .mockup .pa-screen{height:100%}
 
+/* "What's inside" section — sits inside the same scrollable iPhone screen,
+   below the Scored-by-Purely footer. Header pill + bordered ingredient
+   cards exactly like the real Purely app's detail view. */
+.pa-inside{
+  background:#fff;
+  padding:18px 20px 28px;
+  border-top:1px solid #E3E0DA;
+  display:flex;flex-direction:column;gap:14px;
+}
+.pa-inside-hd{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:4px;
+}
+.pa-inside-title{
+  font-size:18px;font-weight:700;color:#1F1D1A;letter-spacing:-.01em;margin:0;
+}
+.pa-inside-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#F0EEE9;color:#1F1D1A;
+  padding:6px 12px;border-radius:99px;
+  font-size:12px;font-weight:600;
+}
+.pa-inside-pill-logo{width:14px;height:14px;object-fit:contain;display:block}
+.pa-inside-list{display:flex;flex-direction:column;gap:12px}
+.pa-inside-card{
+  background:#fff;
+  border:1.5px solid #E3E0DA;border-radius:14px;
+  padding:16px 18px;
+  transition:border-color .12s, transform .1s, box-shadow .15s;
+}
+.pa-inside-card:hover{box-shadow:0 6px 18px -10px rgba(0,0,0,.12);transform:translateY(-1px)}
+.pa-inside-card:active{transform:translateY(0)}
+.pa-inside-card.bad{border-color:#C84A4A}
+.pa-inside-card.good{border-color:#3F9A5D}
+.pa-inside-card.neutral{border-color:#E3E0DA}
+.pa-inside-name{
+  font-size:18px;font-weight:700;color:#1F1D1A;
+  letter-spacing:-.01em;margin-bottom:6px;
+}
+.pa-inside-desc{
+  font-size:14px;line-height:1.5;color:#6B6762;
+}
+
+/* Larger inside cards in fullscreen mode */
+.pa-fs-screen .pa-inside{padding:22px 24px 32px;gap:16px}
+.pa-fs-screen .pa-inside-title{font-size:20px}
+.pa-fs-screen .pa-inside-card{padding:18px 20px}
+.pa-fs-screen .pa-inside-name{font-size:19px}
+.pa-fs-screen .pa-inside-desc{font-size:15px}
+
 /* Fullscreen-expand button on each iPhone tile (top-left corner) */
 .fs-btn{
   position:absolute;top:10px;left:10px;z-index:5;
