@@ -4,7 +4,7 @@
   "private": true,
   "description": "Purely landing — find what's healthy, choose what's pure.",
   "scripts": {
-    "dev": "npx serve . -l 3000",
+    "dev:static": "npx serve . -l 3000",
     "start": "npx serve . -l 3000",
     "build": "echo 'static site — no build step'"
   },

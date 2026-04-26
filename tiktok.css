@@ -167,18 +167,16 @@
 .pr-card-body{font-size:13px;color:var(--ink-2);margin-top:8px;line-height:1.5}
 .pr-card-source{font-size:11px;color:var(--ink-3);margin-top:8px;font-style:italic}
 
-.pr-mockups{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;max-width:760px;margin:0 auto}
-.pr-mockups .mockup{aspect-ratio:9/16;background:#fff;border:1px solid var(--line)}
-.pr-mockups .mockup img{object-fit:contain;background:#fff}
+.pr-mockups{display:grid;grid-template-columns:repeat(2,1fr);gap:28px;max-width:760px;margin:0 auto;padding:6px 4px}
 @media (max-width:900px){
-  .pr-mockups{grid-template-columns:repeat(2,1fr)}
+  .pr-mockups{grid-template-columns:repeat(2,1fr);gap:22px}
   .pr-stats{grid-template-columns:1fr}
   .pr-head{grid-template-columns:1fr;text-align:left}
   .pr-photo{margin:0 auto 4px 0}
   .pr-score{margin:0 auto}
 }
 @media (max-width:560px){
-  .pr-mockups{grid-template-columns:1fr 1fr}
+  .pr-mockups{grid-template-columns:1fr 1fr;gap:16px}
   .product-result{padding:14px;border-radius:20px}
 }
 
@@ -359,16 +357,38 @@
 .pc-mockups-hd .pc-regen svg{width:14px;height:14px}
 .pc-mockups-hd .pc-regen.busy svg{animation:spin 1s linear infinite}
 
-.mockup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mockup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:4px 2px}
+
+/* iPhone device frame */
 .mockup{
-  position:relative;aspect-ratio:9/16;background:#fafdfa;border:1px solid var(--line);border-radius:14px;overflow:hidden;
-  display:grid;place-items:center;color:var(--ink-3);font-size:12px;
+  position:relative;aspect-ratio:9/16;
+  background:#0c0c0e;
+  border-radius:34px;
+  padding:7px;
+  border:1.5px solid #1f1f22;
+  box-shadow:
+    0 22px 44px -16px rgba(0,0,0,.45),
+    0 4px 12px rgba(0,0,0,.16),
+    inset 0 0 0 1px rgba(255,255,255,.05);
+  overflow:hidden;
+  isolation:isolate;
+  color:var(--ink-3);font-size:12px;
 }
-.mockup img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}
+/* Inner screen surface */
+.mockup::after{
+  content:"";position:absolute;inset:7px;border-radius:27px;
+  background:#fff;z-index:0;
+}
+.mockup img{
+  position:absolute;inset:7px;z-index:2;
+  width:calc(100% - 14px);height:calc(100% - 14px);
+  object-fit:contain;display:block;
+  border-radius:27px;background:#fff;
+}
 
 .mockup .dl-btn{
-  position:absolute;top:10px;right:10px;z-index:3;
-  width:36px;height:36px;border-radius:50%;
+  position:absolute;top:14px;right:14px;z-index:4;
+  width:34px;height:34px;border-radius:50%;
   background:rgba(255,255,255,.95);color:var(--green-800);
   border:0;cursor:pointer;display:grid;place-items:center;
   box-shadow:0 6px 14px rgba(0,0,0,.25);
@@ -384,18 +404,20 @@
   .mockup .dl-btn{opacity:1;transform:none}
 }
 .mockup-label{
-  position:absolute;top:10px;left:10px;
+  position:absolute;top:14px;left:14px;z-index:4;
   background:rgba(255,255,255,.95);color:var(--green-800);
   padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  box-shadow:0 2px 6px rgba(0,0,0,.18);
 }
 .mockup .skel{
-  position:absolute;inset:0;
+  position:absolute;inset:7px;z-index:1;border-radius:27px;
   background:
     linear-gradient(110deg, transparent 30%, rgba(124,200,146,.18) 50%, transparent 70%) #f4faf5;
   background-size:200% 100%;animation:shimmer 1.4s linear infinite;
 }
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .mockup .err-msg{
+  position:relative;z-index:2;
   background:rgba(168,57,57,.92);color:#fff;padding:8px 12px;border-radius:8px;
   font-size:11px;font-weight:600;text-align:center;line-height:1.4;max-width:80%;
 }
@@ -433,4 +455,1252 @@
   .mockup-grid{grid-template-columns:1fr 1fr 1fr;gap:8px}
   .container{padding:0 14px}
   .tt-page{padding:32px 0 60px}
+}
+
+/* ============================================================
+ * MOBILE APP SCREENS — flat 9:16 mobile-screen renders that mirror
+ * the actual Purely React Native UI from ScanResultContent.tsx /
+ * theme.ts. No iPhone bezel; just a clean rounded rectangle at
+ * mobile proportions, the way a real screenshot would look.
+ *
+ * Strategy: each screen is laid out at a fixed *logical* size of
+ * 360 × 640 px (true 9:16) using the SAME pixel values the RN app
+ * uses (24pt name, 102pt score ring, 16pt body padding, etc.), then
+ * the whole screen is transform-scaled to fit whatever size the
+ * .mockup container ends up at. This means it's pixel-faithful to
+ * the app at any zoom level instead of guessing with cqi units.
+ * ============================================================ */
+
+/* Reset the legacy iPhone-bezel rules baked into the original
+ * .mockup definition (dark frame, inset 7px screen, ::after). We
+ * keep .mockup as the outer 9:16 rectangle but styled as a flat
+ * mobile screenshot — no bezel, no notch, no chrome. */
+.mockup{
+  container-type:inline-size;
+  background:#F7F5F0;
+  border:1px solid rgba(31,29,26,.08);
+  border-radius:18px;
+  padding:0;
+  box-shadow:
+    0 18px 36px -14px rgba(0,0,0,.18),
+    0 4px 10px rgba(0,0,0,.05);
+  isolation:isolate;
+  overflow:hidden;
+  color:#6B6762;
+  font-size:11px;
+  /* Match modern iPhone aspect (1170×2532 ≈ 9:19.5) instead of 9:16 so
+   * all the sections from the real app screenshots — header, hero, name,
+   * score, stats, "Scored by Purely", What's inside cards — actually
+   * fit on one screen the way they do in the actual app. */
+  aspect-ratio:1170/2532;
+  /* Cap each mockup so wide screens don't blow them up beyond a normal
+   * phone-screenshot size. */
+  max-width:280px;
+  margin:0 auto;
+  width:100%;
+}
+.mockup::after{content:none}
+/* Legacy AI-image flow still uses .mockup img with absolute positioning;
+ * scope that to imgs that are NOT inside an .app-screen so our app screens
+ * use natural-flow images instead. */
+.mockup > img{
+  position:absolute;inset:0;z-index:2;
+  width:100%;height:100%;
+  object-fit:contain;display:block;
+  border-radius:18px;background:#FFF;
+}
+
+/* The screen itself — fixed 360×780 design (~9:19.5 modern iPhone),
+ * transform-scaled to whatever size the .mockup container ends up at. */
+.mockup .app-screen{
+  position:absolute;top:0;left:0;z-index:3;
+  width:360px;height:780px;
+  transform-origin:top left;
+  transform:scale(calc(100cqi / 360));
+  background:#F7F5F0;color:#1F1D1A;
+  font-family:'Inter','-apple-system','SF Pro Text','Segoe UI',sans-serif;
+  font-size:14px;line-height:1.4;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.mockup .app-screen *{box-sizing:border-box}
+.mockup .app-screen img{
+  position:static;inset:auto;width:auto;height:auto;
+  max-width:100%;max-height:100%;object-fit:contain;display:block;
+  border-radius:0;background:transparent;
+}
+
+/* iOS status bar — tiny strip with time + signal/wifi/battery icons.
+ * Real screenshots usually include this so it adds authenticity. */
+.app-status{
+  display:flex;justify-content:space-between;align-items:center;
+  height:24px;padding:6px 22px 0;
+  font-size:13px;font-weight:700;color:#1F1D1A;
+  flex:0 0 auto;
+}
+.app-status .right{display:flex;gap:5px;align-items:center}
+.app-status svg{width:14px;height:14px}
+
+/* Top app bar — back arrow / title / action button (legacy fallback) */
+.app-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  height:48px;padding:0 16px;gap:12px;flex:0 0 auto;
+}
+.app-bar svg{width:22px;height:22px;color:#1F1D1A}
+.app-bar .app-title{font-size:16px;font-weight:600;color:#1F1D1A}
+.app-bar .icon-btn{
+  width:34px;height:34px;border-radius:17px;background:#FFF;
+  display:grid;place-items:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.06);
+}
+.app-bar .icon-btn svg{width:16px;height:16px;color:#B24C4C}
+.app-bar .spacer{width:22px;flex-shrink:0}
+
+/* === Purely-branded header (matches the actual app screenshots) ===
+ * Three-zone bar: white pill back-arrow on left, centered "Purely App"
+ * wordmark with pinwheel logo, white pill action button on right
+ * (heart+count on Result screen, info "i" on Detail screen). */
+.purely-header{
+  display:flex;align-items:center;justify-content:space-between;
+  height:52px;padding:0 16px;gap:8px;flex:0 0 auto;
+}
+.purely-header .hdr-pill{
+  height:38px;display:inline-flex;align-items:center;justify-content:center;
+  background:#FFF;border-radius:19px;padding:0 14px;gap:6px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  font-size:14px;font-weight:600;color:#1F1D1A;
+  border:none;
+}
+.purely-header .hdr-pill.icon-only{width:38px;padding:0}
+.purely-header .hdr-pill svg{width:16px;height:16px;color:#1F1D1A}
+.purely-header .hdr-pill.heart svg{color:#B24C4C;fill:#B24C4C}
+.purely-header .hdr-center{
+  display:flex;align-items:center;gap:8px;
+}
+.purely-header .hdr-center .pinwheel{
+  width:28px;height:28px;border-radius:8px;background:#FFF;
+  display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.05);
+}
+.purely-header .hdr-center .pinwheel img,
+.purely-header .hdr-center .pinwheel svg{
+  width:18px;height:18px;object-fit:contain;
+}
+.purely-header .hdr-center .wordmark{
+  font-size:17px;font-weight:600;color:#1F1D1A;letter-spacing:-0.01em;
+}
+
+/* === Hero photo card — large rounded square image, edge to edge === */
+.hero-photo{
+  width:240px;height:240px;border-radius:22px;
+  background:#E3E0DA;display:flex;align-items:center;justify-content:center;
+  margin:14px auto 18px;overflow:hidden;
+  box-shadow:0 6px 14px rgba(0,0,0,.05);
+}
+.hero-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.hero-photo .ph{
+  width:100%;height:100%;display:grid;place-items:center;
+  color:#FFF;font-weight:700;font-size:64px;letter-spacing:.02em;
+}
+
+/* === Name + Score side-by-side row === */
+.name-score{
+  display:grid;grid-template-columns:1fr auto;gap:12px;
+  align-items:center;padding:0 4px;margin-bottom:14px;
+}
+.name-score .ns-name{
+  font-size:22px;font-weight:700;line-height:1.15;color:#1F1D1A;
+  letter-spacing:-0.01em;
+  display:flex;align-items:flex-start;gap:6px;
+}
+.name-score .ns-name .arrow{
+  display:inline-block;color:#9B958D;font-size:16px;font-weight:500;
+  margin-top:2px;
+}
+.name-score .ns-brand{
+  font-size:14px;color:#6B6762;font-weight:500;margin-top:6px;
+}
+.name-score .ns-tags{
+  display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;
+}
+.name-score .ns-tag{
+  font-size:12px;font-weight:600;
+  padding:6px 12px;border-radius:18px;
+  background:#FFF;border:1px solid #E3E0DA;color:#1F1D1A;
+}
+.name-score .ns-tag.good{
+  background:#E6ECE8;color:#2F8A5B;border-color:transparent;
+  display:inline-flex;align-items:center;gap:4px;
+}
+.name-score .ns-tag.warn{
+  background:#FAF3E8;color:#C08A3E;border-color:transparent;
+  display:inline-flex;align-items:center;gap:4px;
+}
+.name-score .ns-tag svg{width:12px;height:12px}
+
+.name-score .ns-score{
+  position:relative;width:88px;height:88px;flex:0 0 auto;
+}
+.name-score .ns-score svg{width:100%;height:100%;display:block}
+.name-score .ns-score .num{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;line-height:1;
+}
+.name-score .ns-score .num strong{
+  font-size:18px;font-weight:700;color:#1F1D1A;line-height:1;
+}
+.name-score .ns-score .num span{
+  font-size:11px;font-weight:600;color:#2F8A5B;margin-top:3px;
+}
+
+/* === Stat rows (Harmful / Beneficial / Microplastics list) === */
+.stat-rows{display:flex;flex-direction:column;padding:0 4px;margin-top:6px}
+.stat-row{
+  display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;
+  align-items:center;padding:11px 0;
+  font-size:14px;color:#1F1D1A;
+}
+.stat-row + .stat-row{border-top:1px solid rgba(31,29,26,.05)}
+.stat-row .ico{display:grid;place-items:center;color:#1F1D1A}
+.stat-row .ico svg{width:18px;height:18px}
+.stat-row .label{font-weight:500}
+.stat-row .value{font-weight:600;color:#1F1D1A;font-size:15px}
+.stat-row .dot{
+  width:8px;height:8px;border-radius:50%;background:#2F8A5B;
+}
+.stat-row .dot.bad{background:#B24C4C}
+.stat-row .dot.warn{background:#C08A3E}
+
+/* === Divider + "Scored by Purely" === */
+.scored-by{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:14px 0;font-size:14px;color:#6B6762;font-weight:500;
+  border-top:1px solid rgba(31,29,26,.06);
+  border-bottom:1px solid rgba(31,29,26,.06);
+  margin:8px 0 16px;
+}
+.scored-by .pinwheel{
+  width:18px;height:18px;display:inline-grid;place-items:center;
+}
+.scored-by .pinwheel img,.scored-by .pinwheel svg{width:100%;height:100%;object-fit:contain}
+.scored-by strong{color:#1F1D1A;font-weight:600}
+
+/* === "What's inside" / Other section headers === */
+.section-head{
+  font-size:18px;font-weight:700;color:#1F1D1A;
+  padding:0 4px;margin:6px 0 10px;
+}
+
+/* === Finding cards (What's inside) — green-bordered ingredient cards === */
+.find-card{
+  background:#FFF;border:2px solid #2F8A5B;border-radius:14px;
+  padding:16px;margin-bottom:10px;
+}
+.find-card.bad{border-color:#B24C4C}
+.find-card.warn{border-color:#C08A3E}
+.find-card strong{
+  display:block;font-size:16px;font-weight:700;color:#1F1D1A;
+  line-height:1.2;margin-bottom:6px;
+}
+.find-card p{
+  font-size:13px;color:#6B6762;line-height:1.45;margin:0;
+}
+
+/* === Other info / settings rows === */
+.info-card{
+  background:#FFF;border-radius:12px;padding:12px 14px;
+  margin-bottom:10px;box-shadow:0 4px 8px rgba(0,0,0,.04);
+}
+.info-card small{display:block;font-size:12px;color:#6B6762;font-weight:500;margin-bottom:3px}
+.info-card strong{display:block;font-size:15px;font-weight:700;color:#1F1D1A}
+
+.info-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 4px;border-bottom:1px solid rgba(31,29,26,.06);
+  font-size:15px;font-weight:500;color:#1F1D1A;
+}
+.info-row svg{width:18px;height:18px;color:#6B6762}
+
+/* === Detail screen — hero card + score card with gradient + accordions === */
+.detail-hero{
+  background:#FFF;border-radius:14px;padding:18px;margin-bottom:14px;
+  box-shadow:0 4px 12px rgba(0,0,0,.04);
+}
+.detail-hero h2{
+  font-size:24px;font-weight:700;line-height:1.15;color:#1F1D1A;margin:0 0 8px;
+  letter-spacing:-0.01em;
+}
+.detail-hero p{
+  font-size:13px;color:#6B6762;line-height:1.5;margin:0;
+}
+
+.score-card{
+  background:#FFF;border:2px solid #2F8A5B;border-radius:14px;
+  padding:16px;margin-bottom:14px;
+}
+.score-card .top{
+  display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;
+}
+.score-card .top .label{font-size:13px;color:#6B6762;font-weight:500}
+.score-card .top .scale{font-size:13px;color:#6B6762;font-weight:500}
+.score-card .big{
+  font-size:36px;font-weight:800;color:#1F1D1A;line-height:1;margin:8px 0 14px;
+}
+.score-card .big.bad{color:#B24C4C}
+.score-card .grad{
+  height:8px;border-radius:4px;
+  background:linear-gradient(90deg,#E26A6A 0%,#E0A32A 50%,#3F9A5D 100%);
+  position:relative;margin-bottom:8px;
+}
+.score-card .grad .marker{
+  position:absolute;top:50%;width:24px;height:24px;border-radius:50%;
+  background:#FFF;border:3px solid #2F8A5B;
+  transform:translate(-50%,-50%);
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+.score-card .grad-labels{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;
+  font-size:12px;font-weight:600;text-align:center;
+}
+.score-card .grad-labels .col{display:flex;flex-direction:column;align-items:center;gap:2px}
+.score-card .grad-labels .col:nth-child(1){text-align:left;align-items:flex-start}
+.score-card .grad-labels .col:nth-child(3){text-align:right;align-items:flex-end}
+.score-card .grad-labels .num{font-size:13px;font-weight:700;color:#1F1D1A}
+.score-card .grad-labels .col:nth-child(1) .lbl{color:#E26A6A}
+.score-card .grad-labels .col:nth-child(2) .lbl{color:#C08A3E}
+.score-card .grad-labels .col:nth-child(3) .lbl{color:#2F8A5B}
+
+.acc-card{
+  background:#FFF;border-radius:14px;padding:16px 18px;margin-bottom:10px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:16px;font-weight:600;color:#1F1D1A;
+  box-shadow:0 4px 10px rgba(0,0,0,.04);
+}
+.acc-card .plus{font-size:24px;font-weight:300;color:#1F1D1A;line-height:1}
+
+.detail-foot{
+  margin-top:12px;font-size:12px;color:#9B958D;
+  display:flex;flex-direction:column;gap:4px;line-height:1.4;
+}
+.edit-pill{
+  display:inline-flex;align-items:center;
+  background:#E6ECE8;color:#1F1D1A;
+  padding:8px 18px;border-radius:18px;border:none;
+  font-size:14px;font-weight:600;margin-top:14px;
+}
+
+/* Scrollable body — clipped to the screen rectangle */
+.app-body{flex:1 1 auto;overflow:hidden;padding:0 20px 16px}
+
+/* ===== Result / Analysis screen — mirrors ScanResultContent.tsx ===== */
+.result-hero{display:flex;flex-direction:column;align-items:center;padding-top:8px}
+.result-hero .photo{
+  /* RN: width 220, height 220, borderRadius 16, padding md(16), shadow */
+  width:220px;height:220px;border-radius:16px;
+  background:#FFF;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 18px rgba(0,0,0,.06);
+  overflow:hidden;padding:16px;
+  margin-bottom:16px;
+}
+.result-hero .photo img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.result-hero .photo .ph{
+  width:80%;height:80%;border-radius:50%;
+  display:grid;place-items:center;color:#FFF;
+  font-weight:700;font-size:48px;letter-spacing:.02em;
+}
+.result-hero .name{
+  /* RN: 24pt bold, marginBottom xs(6) */
+  font-size:24px;font-weight:700;text-align:center;
+  line-height:1.15;padding:0 12px;color:#1F1D1A;
+  margin-bottom:6px;
+}
+.result-hero .brand{
+  /* RN: 16pt medium, color textMuted, marginBottom sm(10) */
+  font-size:16px;color:#6B6762;font-weight:500;margin-bottom:10px;
+}
+
+.result-tags{display:flex;gap:10px;margin-top:2px;justify-content:center;flex-wrap:wrap}
+.result-tag{
+  /* RN: bg accent (#2F3A35), padding sm(10)/xs(6), borderRadius sm(8) */
+  background:#2F3A35;color:#FFF;
+  padding:6px 10px;border-radius:8px;
+  font-size:12px;font-weight:500;
+}
+.result-tag.toxin{background:#E6ECE8;color:#2F8A5B;display:inline-flex;align-items:center;gap:6px}
+.result-tag.toxin.warn{background:#FAF8F4;color:#B24C4C}
+.result-tag.toxin svg{width:12px;height:12px}
+
+.result-score-wrap{display:flex;justify-content:center;margin-top:20px}
+.result-score{
+  /* RN: 102×102 SVG ring */
+  position:relative;width:102px;height:102px;
+}
+.result-score svg{width:100%;height:100%;display:block}
+.result-score .num{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;line-height:1;
+}
+.result-score .num strong{
+  /* RN: 32pt bold */
+  font-size:32px;font-weight:800;color:#1F1D1A;line-height:1;
+}
+.result-score .num span{
+  /* RN: 14pt medium, marginTop -2 */
+  font-size:14px;font-weight:500;color:#6B6762;margin-top:1px;
+}
+
+/* RN: paddingHorizontal lg(20), paddingVertical md(16) */
+.result-section{margin-top:20px}
+.result-section h4{
+  /* RN: sectionTitle 18pt semiBold, marginBottom md(16) */
+  font-size:18px;font-weight:600;color:#1F1D1A;margin:0 0 12px;
+}
+
+/* Stats grid (3 cards in a row) */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stat-card{
+  /* RN: bg background, borderRadius md(12), padding md(16), shadow soft */
+  background:#FFF;border-radius:12px;padding:14px 8px;
+  text-align:center;box-shadow:0 6px 14px rgba(0,0,0,.05);
+}
+.stat-card strong{
+  /* RN: statValue 20pt bold */
+  display:block;font-size:20px;font-weight:700;color:#1F1D1A;line-height:1;
+}
+.stat-card span{
+  /* RN: statLabel 12pt medium */
+  display:block;font-size:11px;font-weight:500;color:#6B6762;margin-top:6px;
+}
+
+/* Ingredient rows — RN: bg surface, border 2px, borderRadius md, padding md */
+.ingredient-list{display:flex;flex-direction:column;gap:10px}
+.ingredient-row{
+  display:flex;align-items:center;gap:10px;
+  background:#FFF;border:2px solid #E3E0DA;
+  border-radius:12px;padding:14px 16px;
+  box-shadow:0 6px 14px rgba(0,0,0,.04);
+}
+.ingredient-row.harmful{border-color:#B24C4C}
+.ingredient-row.beneficial{border-color:#2F8A5B}
+.ingredient-row .left{flex:1;min-width:0}
+.ingredient-row .name{
+  /* RN: ingredientName 16pt medium */
+  font-size:15px;font-weight:500;color:#1F1D1A;line-height:1.2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  margin-bottom:4px;
+}
+.ingredient-row .status{
+  /* RN: 12pt semiBold uppercase, letterSpacing 0.4 */
+  font-size:11px;font-weight:600;letter-spacing:0.4px;
+  text-transform:uppercase;color:#6B6762;
+}
+.ingredient-row .status.harmful{color:#B24C4C}
+.ingredient-row .status.beneficial{color:#2F8A5B}
+.ingredient-row .badge{
+  /* RN: 12pt semiBold, padding 8/4, borderRadius sm */
+  font-size:11px;font-weight:600;color:#6B6762;
+  background:#FAF8F4;padding:4px 8px;border-radius:6px;
+  white-space:nowrap;
+}
+.ingredient-row .badge.harmful{color:#B24C4C;background:rgba(178,76,76,.10)}
+.ingredient-row .badge.beneficial{color:#2F8A5B;background:rgba(47,138,91,.10)}
+.ingredient-row .chev{color:#9B958D;flex:0 0 auto;display:grid;place-items:center}
+.ingredient-row .chev svg{width:14px;height:14px}
+
+/* ===== Ingredients screen ===== */
+.hero-card{
+  background:#E6ECE8;border-radius:14px;padding:14px;
+  display:flex;gap:12px;align-items:center;margin-bottom:14px;
+}
+.hero-card .icon{
+  width:36px;height:36px;border-radius:10px;background:#FFF;
+  display:grid;place-items:center;color:#2F8A5B;flex:0 0 auto;
+}
+.hero-card .icon svg{width:20px;height:20px}
+.hero-card strong{display:block;font-size:14px;font-weight:600;color:#1F1D1A;line-height:1.2}
+.hero-card span{display:block;font-size:11px;color:#6B6762;margin-top:3px}
+
+.filter-row{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.filter-pill{
+  font-size:11px;font-weight:600;padding:6px 12px;
+  border-radius:18px;border:1px solid #E3E0DA;
+  background:#FFF;color:#6B6762;white-space:nowrap;
+}
+.filter-pill.active{background:#2F3A35;color:#FFF;border-color:#2F3A35}
+.filter-pill.good{color:#2F8A5B;border-color:#2F8A5B}
+.filter-pill.warn{color:#C08A3E;border-color:#C08A3E}
+.filter-pill.bad{color:#B24C4C;border-color:#B24C4C}
+
+/* ===== Scan camera screen — mirrors app/(tabs)/scan.tsx layout ===== */
+.scan-screen{background:#0d0d0e}
+.scan-bg{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(circle at 30% 35%, rgba(255,255,255,.07), transparent 45%),
+    radial-gradient(circle at 70% 70%, rgba(124,200,146,.08), transparent 45%),
+    linear-gradient(135deg,#1a1a1c 0%,#2c2c2e 100%);
+}
+.scan-bg::before{
+  content:"";position:absolute;inset:0;
+  background:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.015) 0 2px, transparent 2px 6px),
+    radial-gradient(ellipse at 50% 50%, rgba(255,255,255,.04) 0%, transparent 60%);
+}
+.scan-screen .app-status{color:#FFF;position:relative;z-index:2}
+.scan-title{
+  position:absolute;top:80px;left:0;right:0;
+  text-align:center;color:#FFF;z-index:2;padding:0 16px;
+}
+.scan-title strong{display:block;font-size:18px;font-weight:700}
+.scan-title span{display:block;font-size:13px;opacity:.75;margin-top:6px}
+.scan-bracket{
+  position:absolute;top:240px;left:50px;right:50px;height:200px;z-index:2;
+}
+.scan-bracket span{
+  position:absolute;width:42px;height:32px;border:3px solid #FFF;border-radius:4px;
+}
+.scan-bracket span:nth-child(1){top:0;left:0;border-right:none;border-bottom:none}
+.scan-bracket span:nth-child(2){top:0;right:0;border-left:none;border-bottom:none}
+.scan-bracket span:nth-child(3){bottom:0;left:0;border-right:none;border-top:none}
+.scan-bracket span:nth-child(4){bottom:0;right:0;border-left:none;border-top:none}
+.scan-laser{
+  position:absolute;left:60px;right:60px;top:340px;
+  height:2px;background:#7CC892;border-radius:1px;
+  box-shadow:0 0 8px #7CC892,0 0 16px rgba(124,200,146,.5);z-index:2;
+}
+.scan-bottom{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:20px 16px 32px;z-index:3;
+  display:flex;flex-direction:column;align-items:center;gap:16px;
+}
+.scan-tabs{display:flex;background:rgba(0,0,0,.55);border-radius:20px;padding:4px;gap:4px}
+.scan-tabs span{
+  font-size:13px;padding:7px 16px;border-radius:18px;
+  color:rgba(255,255,255,.65);font-weight:600;
+}
+.scan-tabs span.active{background:#2F8A5B;color:#FFF}
+.scan-shutter-row{display:flex;align-items:center;gap:32px}
+.scan-shutter{
+  width:68px;height:68px;border-radius:50%;border:5px solid #FFF;
+  background:rgba(255,255,255,.12);
+}
+.scan-side{
+  width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);
+  display:grid;place-items:center;color:#FFF;
+}
+.scan-side svg{width:18px;height:18px}
+
+/* ===== Photo flow — Inside / Detail / Toxin extras ===== */
+.finding-card{
+  background:#FFF;border:1.5px solid #E3E0DA;border-radius:14px;
+  padding:14px;margin-bottom:10px;
+  box-shadow:0 6px 12px rgba(0,0,0,.04);
+}
+.finding-card.bad{border-color:#B24C4C}
+.finding-card.good{border-color:#2F8A5B}
+.finding-card .hd{display:flex;justify-content:space-between;align-items:start;gap:10px}
+.finding-card .hd strong{font-size:15px;font-weight:700;color:#1F1D1A;line-height:1.2;flex:1}
+.finding-card .pill{
+  font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;
+  background:#E6ECE8;color:#2F8A5B;white-space:nowrap;
+}
+.finding-card .pill.bad{background:rgba(178,76,76,.12);color:#B24C4C}
+.finding-card .amount{font-size:12px;color:#6B6762;margin-top:6px;font-variant-numeric:tabular-nums}
+.finding-card .body{font-size:13px;color:#1F1D1A;margin-top:8px;line-height:1.4;opacity:.85}
+
+.detail-block{
+  background:#FFF;border-radius:14px;padding:16px;
+  box-shadow:0 6px 14px rgba(0,0,0,.04);
+}
+.detail-title{font-size:20px;font-weight:700;line-height:1.15;color:#1F1D1A}
+.detail-sub{font-size:13px;color:#6B6762;margin-top:8px;line-height:1.4}
+.detail-score-row{display:flex;align-items:center;gap:14px;margin-top:14px}
+.detail-score-num{font-size:36px;font-weight:800;color:#1F1D1A;line-height:1}
+.detail-score-cap{font-size:11px;color:#9B958D;font-weight:500;line-height:1.3}
+.gradient-bar{
+  height:8px;border-radius:4px;margin:14px 0 8px;
+  background:linear-gradient(90deg,#B24C4C,#C08A3E,#2F8A5B);
+  position:relative;
+}
+.gradient-bar .marker{
+  position:absolute;top:50%;width:14px;height:14px;border-radius:50%;
+  background:#FFF;border:2px solid #1F1D1A;
+  transform:translate(-50%,-50%);
+}
+.gradient-labels{display:flex;justify-content:space-between;font-size:10px;color:#6B6762;font-weight:600}
+
+.acc-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 0;border-top:1px solid #E3E0DA;font-size:15px;font-weight:500;color:#1F1D1A;
+}
+.acc-row .plus{color:#9B958D;font-size:20px;font-weight:600}
+
+/* Stat chips for toxin screen */
+.stat-chip-row{display:flex;gap:8px;margin-top:14px}
+.stat-chip{
+  flex:1;background:#FFF;border:1px solid #E3E0DA;border-radius:12px;
+  padding:12px 8px;text-align:center;
+  box-shadow:0 4px 10px rgba(0,0,0,.04);
+}
+.stat-chip .v{display:block;font-size:18px;font-weight:700;color:#1F1D1A;line-height:1}
+.stat-chip .l{display:block;font-size:10px;font-weight:500;color:#6B6762;margin-top:6px}
+.stat-chip.bad .v{color:#B24C4C}
+.stat-chip.warn .v{color:#C08A3E}
+.stat-chip.good .v{color:#2F8A5B}
+
+/* Footer Purely tag (used on detail/toxin screens) */
+.app-footer{
+  text-align:center;padding:10px 0;
+  font-size:11px;color:#6B6762;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.app-footer img{width:14px;height:14px;object-fit:contain}
+
+/* When the live .app-screen is rendered, hide the legacy corner label */
+.mockup:has(.app-screen) > .mockup-label{display:none}
+.mockup .app-screen ~ .skel{display:none}
+
+/* ============================================================
+ * V13 — Single big scrollable phone-screen that matches the
+ * actual Toxin Report screenshot. White background, real flow
+ * layout, content scrolls inside the phone frame on the page.
+ * Drops the transform-scale trick so html2canvas can capture
+ * a clean off-screen clone at full resolution.
+ * ============================================================ */
+.mockup{
+  background:#FFF;
+  border:1px solid rgba(0,0,0,0.06);
+  border-radius:32px;
+  max-width:400px;
+  box-shadow:
+    0 32px 64px -24px rgba(0,0,0,.22),
+    0 10px 24px rgba(0,0,0,.08),
+    0 0 0 1px rgba(0,0,0,.02);
+  /* keep the existing aspect-ratio:1170/2532 from earlier rule */
+}
+/* The screen fills the device frame and scrolls naturally. */
+.mockup .app-screen{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  background:#FFF;color:#1F1D1A;
+  font-family:'Inter','-apple-system','SF Pro Text','Segoe UI',sans-serif;
+  font-size:14px;line-height:1.4;
+  display:flex;flex-direction:column;
+  overflow-y:auto;overflow-x:hidden;
+  transform:none;          /* kill the cqi scale */
+  -webkit-overflow-scrolling:touch;
+}
+.mockup .app-screen::-webkit-scrollbar{width:5px}
+.mockup .app-screen::-webkit-scrollbar-track{background:transparent}
+.mockup .app-screen::-webkit-scrollbar-thumb{
+  background:rgba(0,0,0,.18);border-radius:99px;
+}
+/* One mockup, centered. Influencers want one big perfect screen, not 3 tiny ones. */
+.mockup-grid{grid-template-columns:1fr;max-width:440px;margin:0 auto;gap:0}
+.pr-mockups{grid-template-columns:1fr;max-width:440px;gap:0}
+
+/* ----- Toxin Report design (matches user screenshots) ----- */
+.tr-status{
+  display:flex;justify-content:space-between;align-items:center;
+  height:44px;padding:14px 22px 6px;
+  font-size:15px;font-weight:600;color:#000;
+  flex:0 0 auto;
+}
+.tr-status .right{display:flex;gap:6px;align-items:center}
+.tr-status svg{height:13px;width:auto;color:#000}
+
+.tr-header{
+  display:grid;grid-template-columns:32px 1fr 32px;align-items:center;
+  padding:6px 18px 8px;gap:8px;flex:0 0 auto;
+}
+.tr-back{
+  background:none;border:0;padding:4px;cursor:pointer;
+  display:flex;align-items:center;justify-content:flex-start;
+}
+.tr-back svg{width:22px;height:22px;color:#1F1D1A}
+.tr-title{
+  text-align:center;font-size:18px;font-weight:600;color:#1F1D1A;
+  letter-spacing:-0.01em;
+}
+
+.tr-product-row{
+  display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;
+  padding:14px 22px 18px;
+}
+.tr-photo{
+  width:88px;height:88px;border-radius:14px;
+  background:#FFF;border:1px solid rgba(0,0,0,0.05);
+  overflow:hidden;display:flex;align-items:center;justify-content:center;
+  padding:6px;flex:0 0 auto;
+  box-shadow:0 4px 14px rgba(0,0,0,.06);
+}
+.tr-photo img{width:100%;height:100%;object-fit:contain;display:block;border-radius:0;background:transparent}
+.tr-photo .ph{
+  width:100%;height:100%;border-radius:8px;
+  display:grid;place-items:center;color:#FFF;
+  font-weight:700;font-size:32px;letter-spacing:.02em;
+}
+.tr-name-block{min-width:0;overflow:hidden}
+.tr-name{
+  font-size:17px;font-weight:700;line-height:1.18;color:#1F1D1A;
+  letter-spacing:-0.012em;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.tr-brand{font-size:13px;color:#6B6762;margin-top:5px;font-weight:500}
+.tr-score{position:relative;width:78px;height:78px;flex:0 0 auto}
+.tr-score svg{width:100%;height:100%;display:block}
+.tr-score-num{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;line-height:1;
+}
+.tr-score-num strong{font-size:24px;font-weight:800;color:#1F1D1A;line-height:1;letter-spacing:-0.01em}
+.tr-score-num span{font-size:11px;font-weight:600;margin-top:3px}
+
+.tr-stat-cards{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;
+  padding:0 22px 22px;
+}
+.tr-stat-card{
+  background:#FFF;border:1px solid rgba(0,0,0,0.07);
+  border-radius:14px;padding:16px 8px;text-align:center;
+  box-shadow:0 1px 0 rgba(0,0,0,.02);
+}
+.tr-stat-card strong{
+  display:block;font-size:22px;font-weight:800;color:#1F1D1A;line-height:1;
+  letter-spacing:-0.01em;
+}
+.tr-stat-card span{
+  display:block;font-size:12px;color:#6B6762;margin-top:7px;font-weight:500;
+}
+.tr-stat-card.bad strong{color:#B24C4C}
+.tr-stat-card.warn strong{color:#C08A3E}
+.tr-stat-card.good strong{color:#2F8A5B}
+
+.tr-section-head{
+  font-size:22px;font-weight:700;color:#1F1D1A;
+  padding:6px 22px 14px;letter-spacing:-0.012em;
+}
+
+.tr-finding{
+  margin:0 22px 12px;background:#FFF;
+  border:1.5px solid #E3E0DA;border-radius:16px;
+  padding:16px 18px;
+}
+.tr-finding.bad{border-color:#E8B5B5}
+.tr-finding.good{border-color:#B5D4BF}
+.tr-finding.warn{border-color:#E8D4A6}
+.tr-finding-hd{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+}
+.tr-finding-hd strong{
+  font-size:16px;font-weight:700;color:#1F1D1A;
+  flex:1;line-height:1.3;
+}
+.tr-pill{
+  font-size:12px;font-weight:600;padding:6px 12px;border-radius:99px;
+  background:#F0F0EC;color:#6B6762;white-space:nowrap;flex-shrink:0;
+}
+.tr-pill.bad{background:#FDE8E8;color:#B24C4C}
+.tr-pill.good{background:#E6ECE8;color:#2F8A5B}
+.tr-pill.warn{background:#FAF3E8;color:#C08A3E}
+.tr-finding-amount{
+  font-size:13px;color:#6B6762;margin-top:8px;
+  font-variant-numeric:tabular-nums;
+}
+.tr-finding p{
+  font-size:14px;color:#1F1D1A;line-height:1.45;margin:10px 0 0;
+}
+
+.tr-footer{
+  text-align:center;padding:18px 0 30px;
+  font-size:14px;color:#6B6762;font-weight:500;
+}
+
+/* Make download button always visible on the bigger frame */
+.mockup .dl-btn{opacity:1;transform:none;top:auto;bottom:14px;right:14px}
+.mockup:hover .dl-btn{transform:none;background:var(--green-700);color:#FFF}
+
+/* ============================================================
+ * V14 — EXACT mirror of components/ScanResultContent.tsx +
+ * screens/ScanResultScreen.tsx from the real Purely RN app.
+ * Theme tokens (constants/theme.ts) translated 1:1:
+ *   background #F7F5F0 / surface #FFF / text #1F1D1A
+ *   textMuted #6B6762 / textSubtle #9B958D / border #E3E0DA
+ *   accent #2F3A35 / accentSoft #E6ECE8
+ *   success #2F8A5B / warning #C08A3E / danger #B24C4C
+ * Spacing: xs6 sm10 md16 lg20 xl24
+ * Radii: sm8 md12 lg16
+ * Shadow.soft: 0 8px 18px rgba(0,0,0,.06)
+ * ============================================================ */
+.mockup .app-screen{background:#F7F5F0;color:#1F1D1A;padding-bottom:24px}
+
+/* Status bar */
+.sr-status{
+  display:flex;justify-content:space-between;align-items:center;
+  height:44px;padding:14px 22px 6px;
+  font-size:15px;font-weight:600;color:#000;flex:0 0 auto;
+}
+.sr-status .right{display:flex;gap:6px;align-items:center}
+.sr-status svg{height:13px;width:auto;color:#000}
+
+/* Top header (back / title / heart / share) */
+.sr-header{
+  display:grid;grid-template-columns:36px 1fr auto auto;align-items:center;
+  padding:6px 14px 10px;gap:8px;flex:0 0 auto;
+}
+.sr-header-btn{
+  background:#FFF;border:0;
+  width:36px;height:36px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;
+  box-shadow:0 8px 18px rgba(0,0,0,.06);padding:0;
+}
+.sr-header-btn svg{width:18px;height:18px;color:#1F1D1A}
+.sr-header-btn.heart svg{color:#B24C4C;fill:#B24C4C}
+.sr-header-title{
+  text-align:center;font-size:17px;font-weight:600;color:#1F1D1A;
+  letter-spacing:-0.01em;
+}
+
+/* Hero image card — 220×220 centered, white bg, padding md, shadow.soft */
+.sr-image-container{
+  display:flex;flex-direction:column;align-items:center;
+  padding:20px 20px 0;
+}
+.sr-image-card{
+  width:220px;height:220px;border-radius:16px;
+  background:#FFF;padding:16px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 18px rgba(0,0,0,.06);
+  margin-bottom:16px;overflow:hidden;
+}
+.sr-image-card img{
+  width:100%;height:100%;border-radius:12px;
+  object-fit:contain;display:block;
+}
+.sr-image-card .ph{
+  width:100%;height:100%;border-radius:12px;
+  display:grid;place-items:center;color:#FFF;
+  font-weight:700;font-size:48px;letter-spacing:.02em;
+}
+
+/* Product info — centered name/brand/tags */
+.sr-product-info{
+  display:flex;flex-direction:column;align-items:center;
+  padding:0 20px;width:100%;
+}
+.sr-name{
+  font-size:24px;font-weight:700;color:#1F1D1A;
+  text-align:center;line-height:1.15;letter-spacing:-0.01em;
+  margin:0 0 6px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.sr-brand{
+  font-size:16px;font-weight:500;color:#6B6762;
+  text-align:center;margin:0 0 10px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+}
+.sr-tags-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.sr-tag-category{
+  background:#2F3A35;color:#FFF;
+  padding:6px 10px;border-radius:8px;
+  font-size:12px;font-weight:500;
+}
+.sr-tag-toxin{
+  background:#FAF8F4;color:#6B6762;
+  padding:6px 10px;border-radius:8px;
+  font-size:12px;font-weight:500;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.sr-tag-toxin.good{background:#E6ECE8;color:#2F8A5B}
+.sr-tag-toxin svg{width:12px;height:12px;flex-shrink:0}
+
+/* Score circle — 102×102 centered, marginTop lg */
+.sr-score-wrap{
+  display:flex;justify-content:center;align-items:center;
+  margin-top:20px;
+}
+.sr-score-circle{position:relative;width:102px;height:102px}
+.sr-score-circle svg{width:100%;height:100%;display:block}
+.sr-score-text{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;line-height:1;
+}
+.sr-score-num{font-size:32px;font-weight:700;color:#1F1D1A;line-height:1}
+.sr-score-label{font-size:14px;font-weight:500;color:#6B6762;margin-top:-2px}
+
+/* Section wrapper */
+.sr-section{padding:16px 20px 0}
+.sr-section-title{
+  font-size:18px;font-weight:600;color:#1F1D1A;
+  margin:0 0 16px;
+}
+
+/* Stats grid */
+.sr-stats-grid{display:flex;flex-wrap:wrap;gap:10px}
+.sr-stat-card{
+  flex:1;min-width:80px;
+  background:#FFF;border-radius:12px;padding:16px 8px;
+  display:flex;flex-direction:column;align-items:center;
+  box-shadow:0 8px 18px rgba(0,0,0,.06);
+}
+.sr-stat-value{font-size:20px;font-weight:700;color:#1F1D1A;line-height:1;text-align:center}
+.sr-stat-label{font-size:12px;font-weight:500;color:#6B6762;margin-top:6px;text-align:center}
+
+/* Ingredient row — bg surface, border 2px, padding md, radii md, shadow soft */
+.sr-ing-list{display:flex;flex-direction:column;gap:10px}
+.sr-ing-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:#FFF;border-radius:12px;padding:16px;
+  border:2px solid #E3E0DA;
+  box-shadow:0 8px 18px rgba(0,0,0,.06);
+  cursor:pointer;
+}
+.sr-ing-row.beneficial{border-color:#2F8A5B}
+.sr-ing-row.harmful{border-color:#B24C4C}
+.sr-ing-left{flex:1;min-width:0}
+.sr-ing-name{
+  font-size:16px;font-weight:500;color:#1F1D1A;
+  margin:0 0 6px;line-height:1.2;
+}
+.sr-ing-status{
+  font-size:12px;font-weight:600;color:#6B6762;
+  text-transform:uppercase;letter-spacing:0.4px;
+}
+.sr-ing-status.beneficial{color:#2F8A5B}
+.sr-ing-status.harmful{color:#B24C4C}
+.sr-ing-snippet{
+  font-size:13px;line-height:18px;color:#6B6762;
+  margin-top:4px;font-weight:400;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.sr-ing-right{
+  display:flex;align-items:center;gap:6px;margin-left:10px;flex-shrink:0;
+}
+.sr-ing-badge{
+  font-size:12px;font-weight:600;color:#6B6762;
+  background:#FAF8F4;
+  padding:4px 8px;border-radius:8px;
+  white-space:nowrap;max-width:140px;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.sr-ing-badge.harmful{color:#B24C4C;background:rgba(178,76,76,.10)}
+.sr-ing-badge.beneficial{color:#2F8A5B;background:rgba(47,138,91,.10)}
+.sr-ing-chev{color:#9B958D;flex-shrink:0;display:grid;place-items:center}
+.sr-ing-chev svg{width:16px;height:16px}
+
+/* Other info card */
+.sr-info-card{
+  background:#FFF;border-radius:12px;padding:16px;margin-bottom:10px;
+  box-shadow:0 8px 18px rgba(0,0,0,.06);
+}
+.sr-info-label{font-size:14px;font-weight:500;color:#6B6762;margin:0 0 6px}
+.sr-info-value{font-size:16px;font-weight:500;color:#1F1D1A;margin:0}
+
+/* Info action rows */
+.sr-action-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 0;border-bottom:1px solid #E3E0DA;
+  cursor:pointer;
+}
+.sr-action-row:last-child{border-bottom:0}
+.sr-action-text{font-size:16px;font-weight:500;color:#1F1D1A}
+.sr-action-row svg{width:18px;height:18px;color:#6B6762}
+
+.sr-empty{
+  font-size:14px;font-weight:500;color:#6B6762;
+  text-align:center;padding:20px 0;
+}
+
+/* Click-to-expand ingredient detail panel — mirrors app/ingredient-detail.tsx
+ * but inline so the screenshot stays one continuous scroll. Toggled by JS. */
+.sr-ing-row{flex-wrap:wrap;transition:border-color .15s}
+.sr-ing-detail{
+  display:none;width:100%;flex-basis:100%;
+  border-top:1px dashed #E3E0DA;
+  margin-top:14px;padding-top:14px;
+}
+.sr-ing-row.expanded .sr-ing-detail{display:block}
+.sr-ing-row.expanded .sr-ing-chev svg{transform:rotate(90deg)}
+.sr-ing-row .sr-ing-chev svg{transition:transform .18s ease}
+.sr-ing-detail .d-row{
+  display:grid;grid-template-columns:auto 1fr;gap:14px;
+  padding:8px 0;font-size:13px;align-items:baseline;
+  border-bottom:1px solid rgba(31,29,26,.05);
+}
+.sr-ing-detail .d-row:last-child{border-bottom:0}
+.sr-ing-detail .d-row .k{color:#6B6762;font-weight:500;white-space:nowrap}
+.sr-ing-detail .d-row .v{color:#1F1D1A;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.sr-ing-detail .d-row.exceed .v{color:#B24C4C}
+.sr-ing-detail .d-row.full{grid-template-columns:1fr;gap:4px;padding:10px 0}
+.sr-ing-detail .d-row.full .k{
+  font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:600;color:#9B958D;
+}
+.sr-ing-detail .d-row.full .v{
+  text-align:left;font-weight:400;color:#1F1D1A;font-size:13px;line-height:1.5;
+}
+
+/* Lifestyle photo section — generated via /api/generate-lifestyle */
+.lifestyle-section{
+  margin-top:32px;background:#fff;border:1px solid var(--line);
+  border-radius:18px;padding:22px;box-shadow:var(--shadow-sm);
+}
+.lifestyle-hd{
+  display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:12px;margin-bottom:14px;
+}
+.lifestyle-hd h3{
+  margin:0;font-size:17px;font-weight:700;color:var(--ink);
+  display:flex;align-items:center;gap:10px;
+}
+.lifestyle-hd h3 .ico{
+  width:30px;height:30px;border-radius:9px;background:#eaf5ed;
+  color:var(--green-800);display:grid;place-items:center;
+}
+.lifestyle-hd h3 .ico svg{width:16px;height:16px}
+.lifestyle-hd .sub{font-size:13px;color:var(--ink-3);font-weight:500;flex-basis:100%}
+.lifestyle-go{
+  background:linear-gradient(180deg,var(--green-700),var(--green-800));color:#fff;
+  border:0;border-radius:10px;padding:10px 18px;font:inherit;font-weight:700;font-size:13px;
+  cursor:pointer;display:inline-flex;align-items:center;gap:8px;
+  box-shadow:0 8px 16px -8px rgba(47,122,71,.45);
+}
+.lifestyle-go:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px)}
+.lifestyle-go:disabled{opacity:.55;cursor:wait}
+.lifestyle-go svg{width:14px;height:14px}
+.lifestyle-go.busy svg{animation:spin 1s linear infinite}
+.lifestyle-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;
+}
+.lifestyle-tile{
+  position:relative;aspect-ratio:2/3;border-radius:14px;overflow:hidden;
+  background:#eaf0eb;border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+}
+.lifestyle-tile img{width:100%;height:100%;object-fit:cover;display:block}
+.lifestyle-tile .skel{
+  position:absolute;inset:0;
+  background:linear-gradient(110deg,transparent 30%,rgba(124,200,146,.18) 50%,transparent 70%) #f4faf5;
+  background-size:200% 100%;animation:shimmer 1.4s linear infinite;
+}
+.lifestyle-tile .ll-dl{
+  position:absolute;bottom:10px;right:10px;
+  width:34px;height:34px;border-radius:50%;
+  background:rgba(255,255,255,.95);color:var(--green-800);
+  border:0;cursor:pointer;display:grid;place-items:center;
+  box-shadow:0 6px 14px rgba(0,0,0,.25);
+}
+.lifestyle-tile .ll-dl svg{width:16px;height:16px}
+.lifestyle-tile .ll-dl:hover{background:var(--green-700);color:#fff}
+.lifestyle-tile .ll-err{
+  position:absolute;inset:auto 0 0 0;padding:10px;
+  background:rgba(168,57,57,.92);color:#fff;
+  font-size:12px;font-weight:600;text-align:center;line-height:1.3;
+}
+
+/* ===========================================================================
+ *  Ingredient detail modal — opens when an ingredient row OR the Microplastics
+ *  stat card is tapped. Mirrors app/ingredient-detail.tsx in the real app.
+ * ========================================================================= */
+body.ing-modal-open{overflow:hidden}
+.ing-modal{
+  position:fixed;inset:0;z-index:300;
+  background:radial-gradient(60% 70% at 50% 30%, rgba(47,58,53,.55), rgba(15,15,15,.85));
+  display:grid;place-items:center;
+  padding:24px;
+  animation:ing-fade .18s ease-out;
+}
+@keyframes ing-fade{from{opacity:0}to{opacity:1}}
+/* Real iPhone shell: dark device bezel + rounded corners + soft shadow */
+.ing-screen{
+  background:#F7F5F0;
+  width:min(420px, 100%);height:min(900px, 92vh);
+  border-radius:46px;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  position:relative;
+  box-shadow:
+    0 0 0 8px #0c0c0e,
+    0 0 0 9.5px #2a2a2a,
+    0 40px 90px -20px rgba(0,0,0,.55),
+    0 6px 18px rgba(0,0,0,.18);
+  animation:ing-rise .25s cubic-bezier(.2,.9,.2,1);
+}
+@keyframes ing-rise{from{transform:translateY(20px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+
+/* iOS status bar inside the modal screen */
+.ing-status{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 22px 6px;font-size:14px;font-weight:600;color:#1F1D1A;
+  font-variant-numeric:tabular-nums;letter-spacing:.01em;
+}
+.ing-status .right{display:flex;gap:5px;align-items:center}
+.ing-status .right svg{height:11px;width:auto;display:block}
+
+/* Home indicator at the bottom — the iOS gesture bar */
+.ing-home-indicator{
+  height:5px;width:135px;border-radius:99px;
+  background:#1F1D1A;
+  margin:6px auto 8px;
+  flex-shrink:0;
+}
+
+/* Header — back / Purely logo + wordmark / info */
+.ing-hdr{
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;
+  padding:14px 16px 8px;gap:10px;
+  background:#F7F5F0;
+}
+.ing-hdr-btn{
+  width:38px;height:38px;border-radius:50%;
+  background:#fff;border:1px solid #E3E0DA;
+  display:grid;place-items:center;cursor:pointer;
+  color:#1F1D1A;
+  transition:background .15s, transform .1s;
+}
+.ing-hdr-btn:hover{background:#FAF8F4}
+.ing-hdr-btn:active{transform:scale(.95)}
+.ing-hdr-btn svg{width:18px;height:18px}
+.ing-hdr-center{display:flex;align-items:center;gap:8px;justify-content:center}
+.ing-logo{width:24px;height:24px;object-fit:contain}
+.ing-wordmark{
+  font-weight:700;font-size:17px;color:#1F1D1A;letter-spacing:-.01em;
+}
+
+/* Scrollable body */
+.ing-body{
+  flex:1;overflow-y:auto;
+  padding:8px 18px 24px;
+  display:flex;flex-direction:column;gap:12px;
+  -webkit-overflow-scrolling:touch;
+}
+.ing-body::-webkit-scrollbar{width:6px}
+.ing-body::-webkit-scrollbar-thumb{background:#d8ead9;border-radius:99px}
+
+/* Ingredient name + description card */
+.ing-name-card{
+  background:#fff;border-radius:16px;padding:18px 20px;
+  box-shadow:0 6px 18px -8px rgba(0,0,0,.06);
+}
+.ing-name{
+  font-size:26px;font-weight:800;color:#1F1D1A;letter-spacing:-.01em;
+  line-height:1.15;margin-bottom:6px;
+}
+.ing-desc{font-size:14px;color:#6B6762;line-height:1.5}
+
+/* Score card — gradient slider with rounded thumb */
+.ing-score-card{
+  background:#fff;border-radius:16px;padding:18px 20px;
+  border:1.5px solid #E3E0DA;
+  box-shadow:0 6px 18px -8px rgba(0,0,0,.06);
+}
+.ing-score-card.bad{border-color:#e6c0c0}
+.ing-score-card.good{border-color:#bcd9c4}
+.ing-score-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.ing-score-lbl{font-size:13px;font-weight:600;color:#6B6762;text-transform:uppercase;letter-spacing:.06em}
+.ing-score-scale{font-size:11px;color:#9B958D;font-weight:500}
+.ing-score-num{
+  font-size:38px;font-weight:800;color:#1F1D1A;line-height:1;margin-bottom:14px;
+  font-variant-numeric:tabular-nums;
+}
+.ing-slider{
+  position:relative;height:10px;border-radius:99px;
+  background:linear-gradient(90deg,#D44A4A 0%,#E0A52E 50%,#3F9A5D 100%);
+  margin:6px 0 8px;
+}
+.ing-slider-track{position:absolute;inset:0;border-radius:99px}
+.ing-slider-thumb{
+  position:absolute;top:50%;
+  width:18px;height:18px;border-radius:50%;
+  background:#fff;border:2.5px solid #1F1D1A;
+  transform:translate(-50%, -50%);
+  box-shadow:0 2px 6px rgba(0,0,0,.18);
+}
+.ing-slider-labels{
+  display:flex;justify-content:space-between;
+  margin-top:10px;
+}
+.ing-slider-labels span{display:flex;flex-direction:column;align-items:center;gap:2px}
+.ing-slider-labels strong{font-size:13px;font-weight:700;color:#1F1D1A;font-variant-numeric:tabular-nums}
+.ing-slider-labels em{font-size:11px;font-style:normal;color:#9B958D;font-weight:500}
+.ing-slider-labels span:first-child em{color:#D44A4A}
+.ing-slider-labels span:nth-child(2) em{color:#E0A52E}
+.ing-slider-labels span:last-child em{color:#3F9A5D}
+
+/* Expandable accordion rows */
+.ing-accord{
+  background:#fff;border-radius:14px;
+  box-shadow:0 4px 14px -8px rgba(0,0,0,.06);
+  overflow:hidden;
+  transition:background .15s;
+}
+.ing-accord-hd{
+  width:100%;
+  display:flex;align-items:center;justify-content:space-between;
+  background:none;border:0;cursor:pointer;
+  padding:16px 18px;
+  font:inherit;color:#1F1D1A;
+}
+.ing-accord-title{font-size:15px;font-weight:600}
+.ing-plus{
+  width:18px;height:18px;color:#6B6762;
+  transition:transform .2s;
+}
+.ing-accord.open .ing-plus{transform:rotate(45deg);color:#1F1D1A}
+.ing-accord-body{
+  max-height:0;overflow:hidden;
+  transition:max-height .25s ease;
+  padding:0 18px;
+}
+.ing-accord.open .ing-accord-body{
+  max-height:500px;
+  padding:0 18px 16px;
+}
+.ing-accord-body p{
+  margin:0;font-size:14px;color:#6B6762;line-height:1.55;
+}
+
+/* Footer attribution row */
+.ing-foot{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:14px 6px 4px;
+  font-size:13px;color:#6B6762;
+  border-top:1px solid #E3E0DA;
+  margin-top:6px;
+}
+.ing-foot-name{font-weight:600;color:#1F1D1A}
+.ing-foot-score{font-weight:500}
+
+.ing-edit-btn{
+  align-self:flex-start;
+  margin-top:6px;
+  background:#fff;border:1px solid #E3E0DA;
+  padding:9px 22px;border-radius:99px;
+  font:inherit;font-weight:600;font-size:14px;color:#1F1D1A;
+  cursor:pointer;
+  transition:background .15s, border-color .15s;
+}
+.ing-edit-btn:hover{background:#FAF8F4;border-color:#1F1D1A}
+
+/* Make the Microplastics stat card visibly clickable */
+.sr-stat-card.clickable{
+  cursor:pointer;
+  transition:transform .15s, box-shadow .15s;
+}
+.sr-stat-card.clickable:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 22px -10px rgba(0,0,0,.14);
+}
+.sr-stat-card.clickable:active{transform:translateY(0)}
+
+/* Phone-sized: drop the device frame; modal is the whole viewport */
+@media (max-width:520px){
+  .ing-modal{padding:0;background:#F7F5F0}
+  .ing-screen{
+    border-radius:0;height:100vh;width:100%;
+    box-shadow:none;
+  }
+  .ing-status{padding-top:max(14px, env(safe-area-inset-top))}
+  .ing-home-indicator{margin-bottom:max(8px, env(safe-area-inset-bottom))}
+  .ing-name{font-size:24px}
+  .ing-score-num{font-size:34px}
 }
