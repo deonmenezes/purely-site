@@ -421,10 +421,55 @@
         <div class="sr-info-value">${escapeHtml(String(m.value))}</div>
       </div>`).join('');
 
+    // Map a finding name → human-readable quality label (Flour quality,
+    // Oil quality, Sugar, Sodium, Microplastics, etc.) so each substance
+    // row reads like the real app's compact "Quality" rundown.
+    function paQualityLabel(n) {
+      const s = String(n || '').toLowerCase();
+      if (/flour|wheat|grain|cereal/.test(s)) return 'Flour quality';
+      if (/oil|fat|lard|tallow/.test(s)) return 'Oil quality';
+      if (/sugar|fructose|syrup|sweetener|sucrose|glucose/.test(s)) return 'Sugar';
+      if (/salt|sodium/.test(s)) return 'Sodium';
+      if (/microplastic|plastic/.test(s)) return 'Microplastics';
+      if (/preserv|sorbate|benzoate|nitrate|nitrite/.test(s)) return 'Preservatives';
+      if (/color|dye|red 40|yellow 5|fd&c/.test(s)) return 'Colorants';
+      if (/protein|amino/.test(s)) return 'Protein quality';
+      if (/fiber|fibre/.test(s)) return 'Fiber';
+      if (/vitamin|mineral/.test(s)) return 'Nutrients';
+      if (/lead|cadmium|arsenic|mercury/.test(s)) return 'Heavy metals';
+      return 'Quality';
+    }
+    const PA_LEAF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 19c8 0 14-6 14-14 0-1 0-1-1-1-8 0-14 6-14 14 0 1 0 1 1 1z" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19l9-9" stroke-linecap="round"/></svg>';
+    const PA_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l10 17H2L12 3zm0 7v5m0 3v.01" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const PA_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/></svg>';
+
+    // Build the compact substance rows shown under the score (top 4 findings).
+    const paRowsHtml = (findings.length ? findings.slice(0, 4) : []).map((f, idx) => {
+      const dotClass = f.kind === 'bad' ? 'bad' : f.kind === 'good' ? 'good' : 'neutral';
+      const lbl = paQualityLabel(f.name);
+      const isWarnIcon = /sugar|salt|sodium|preserv|color|microplastic|metal/.test(String(f.name || '').toLowerCase()) && f.kind === 'bad';
+      const ico = isWarnIcon ? PA_WARN : PA_LEAF;
+      const valExtra = f.amount ? ` (${escapeHtml(f.amount)})` : (f.pill && /top \d/i.test(f.pill) ? ` (${escapeHtml(f.pill)})` : '');
+      return `
+        <div class="pa-stat-row" data-idx="${idx}">
+          <span class="pa-stat-ico">${ico}</span>
+          <span class="pa-stat-lbl">${escapeHtml(lbl)}</span>
+          <span class="pa-stat-val">${escapeHtml(f.name || '—')}${valExtra}</span>
+          <span class="pa-stat-dot ${dotClass}"></span>
+        </div>`;
+    }).join('') || `<div class="pa-stat-empty">No specific concerns extracted from this product.</div>`;
+
+    // Score ring with a small dot at the end-of-arc position. For a score
+    // of 1, the dot sits just past 12 o'clock — visually matches the real
+    // app's single-dot indicator on otherwise-empty ring.
+    const angleDeg = (safeScore / 100) * 360 - 90;
+    const dotX = 51 + 46 * Math.cos(angleDeg * Math.PI / 180);
+    const dotY = 51 + 46 * Math.sin(angleDeg * Math.PI / 180);
+
     clearTile(tile);
     tile.insertAdjacentHTML('beforeend', `
-      <div class="app-screen">
-        <div class="sr-status">
+      <div class="app-screen pa-screen">
+        <div class="pa-status">
           <span>9:41</span>
           <div class="right">
             <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="0.5"/><rect x="4" y="6" width="3" height="6" rx="0.5"/><rect x="8" y="3" width="3" height="9" rx="0.5"/><rect x="12" y="0" width="3" height="12" rx="0.5"/></svg>
@@ -433,90 +478,93 @@
           </div>
         </div>
 
-        <div class="sr-header">
-          <button class="sr-header-btn" aria-label="Back">
+        <div class="pa-hdr">
+          <button class="pa-hdr-icon" aria-label="Back">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="sr-header-title">Result</div>
-          <button class="sr-header-btn heart" aria-label="Like">
-            <svg viewBox="0 0 24 24"><path d="M12 21l-1.5-1.4C5 14.5 2 11.7 2 8.5A5.5 5.5 0 017.5 3 6 6 0 0112 5.4 6 6 0 0116.5 3 5.5 5.5 0 0122 8.5c0 3.2-3 6-8.5 11.1L12 21z"/></svg>
-          </button>
-          <button class="sr-header-btn" aria-label="Share">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.5 10.5L15.5 7M8.5 13.5L15.5 17" stroke-linecap="round"/></svg>
-          </button>
+          <div class="pa-hdr-pill">
+            <img src="${PURELY_LOGO_PATH}" alt="" class="pa-hdr-logo">
+            <span class="pa-hdr-text">Purely App</span>
+          </div>
+          <button class="pa-hdr-icon" aria-label="View">${PA_EYE}</button>
         </div>
 
-        <div class="sr-image-container">
-          <div class="sr-image-card">${photoHtml}</div>
-          <div class="sr-product-info">
-            <div class="sr-name">${escapeHtml(name)}</div>
-            ${brand ? `<div class="sr-brand">${escapeHtml(brand)}</div>` : ''}
-            <div class="sr-tags-row">
-              <span class="sr-tag-category">${escapeHtml(titleCaseCategory)}</span>
-              <span class="sr-tag-toxin ${isGoodHealth ? 'good' : ''}">
+        <div class="pa-hero">
+          <div class="pa-hero-card">${photoHtml}</div>
+        </div>
+
+        <div class="pa-info">
+          <div class="pa-info-left">
+            <div class="pa-name">
+              <span class="pa-name-text">${escapeHtml(name)}</span>
+              <span class="pa-name-arrow">↗</span>
+            </div>
+            ${brand ? `<div class="pa-brand">${escapeHtml(brand)}</div>` : ''}
+            <div class="pa-tags">
+              <span class="pa-tag">${escapeHtml(titleCaseCategory)}</span>
+              <span class="pa-tag toxin ${isGoodHealth ? 'good' : 'warn'}">
                 ${isGoodHealth
-                  ? '<svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"><path d="M5 12l4 4 10-10" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-                  : '<svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2"><path d="M12 3l10 17H2L12 3zm0 6v5m0 3v.01" stroke-linecap="round" stroke-linejoin="round"/></svg>'}
+                  ? '<svg viewBox="0 0 24 24" fill="none" stroke="#3F9A5D" stroke-width="2.6"><path d="M5 12l4 4 10-10" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+                  : '<svg viewBox="0 0 24 24" fill="none" stroke="#D44A4A" stroke-width="2.2"><path d="M12 3l10 17H2L12 3zm0 6v5m0 3v.01" stroke-linecap="round" stroke-linejoin="round"/></svg>'}
                 ${isGoodHealth ? 'Health report' : 'Toxin report'}
               </span>
             </div>
           </div>
-          <div class="sr-score-wrap">
-            <div class="sr-score-circle">
-              <svg viewBox="0 0 102 102">
-                <circle cx="51" cy="51" r="46" stroke="#E3E0DA" stroke-width="7" fill="none"/>
-                <circle cx="51" cy="51" r="46" stroke="${ringColor}" stroke-width="7" fill="none"
-                  stroke-linecap="round" stroke-dasharray="${dash} 289" transform="rotate(-90 51 51)"/>
-              </svg>
-              <div class="sr-score-text">
-                <div class="sr-score-num">${safeScore}</div>
-                <div class="sr-score-label">${escapeHtml(verdictText)}</div>
-              </div>
+          <div class="pa-score" style="--ring:${ringColor}">
+            <svg viewBox="0 0 102 102" class="pa-score-svg">
+              <circle cx="51" cy="51" r="46" stroke="#E3E0DA" stroke-width="6" fill="none"/>
+              <circle cx="${dotX.toFixed(2)}" cy="${dotY.toFixed(2)}" r="5.5" fill="${ringColor}"/>
+            </svg>
+            <div class="pa-score-text">
+              <div class="pa-score-num">${safeScore} / 100</div>
+              <div class="pa-score-lbl">${escapeHtml(verdictText)}</div>
             </div>
           </div>
         </div>
 
-        <div class="sr-section">
-          <div class="sr-section-title">Stats</div>
-          <div class="sr-stats-grid">${statsHtml}</div>
+        <div class="pa-stat-rows">
+          ${paRowsHtml}
         </div>
 
-        <div class="sr-section">
-          <div class="sr-section-title">Ingredients</div>
-          <div class="sr-ing-list">${ingredientCardsHtml}</div>
-        </div>
+        <div class="pa-divider"></div>
 
-        <div class="sr-section">
-          <div class="sr-section-title">Other info</div>
-          ${otherInfoHtml}
-        </div>
-
-        <div class="sr-section">
-          <div class="sr-action-row">
-            <span class="sr-action-text">How scoring works</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5" stroke-linecap="round"/></svg>
-          </div>
-          <div class="sr-action-row">
-            <span class="sr-action-text">Report an issue</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V4l16 4-16 4M4 4v17" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
+        <div class="pa-foot">
+          <span class="pa-foot-by">Scored by</span>
+          <img src="${PURELY_LOGO_PATH}" alt="" class="pa-foot-logo">
+          <strong class="pa-foot-name">Purely</strong>
         </div>
       </div>
       ${makeDownloadBtn(filename)}
     `);
     attachDownload(tile, filename);
 
-    // Tap any ingredient row → open the full ingredient-detail screen
-    // (mirrors app/ingredient-detail.tsx in the real Purely app: name card,
+    // Tap any substance row → open the ingredient-detail screen with the
     // -5..5 score slider, expandable Risks / Benefits / Legal limit / Health
-    // guideline / References sections, product attribution footer).
-    tile.querySelectorAll('.sr-ing-row').forEach((row, idx) => {
+    // guideline / References sections, and product attribution footer.
+    tile.querySelectorAll('.pa-stat-row').forEach((row, idx) => {
       row.style.cursor = 'pointer';
       row.addEventListener('click', () => {
         const f = findings[idx];
         if (!f) return;
         const status = f.kind === 'bad' ? 'harmful' : f.kind === 'good' ? 'beneficial' : 'neutral';
         const detailScore = status === 'harmful' ? -4 : status === 'beneficial' ? 4 : 0;
+        // Microplastics row gets the richer microplastics-specific copy.
+        if (/microplastic/i.test(f.name)) {
+          const mp = microplasticsDetail || {};
+          openIngredientDetail({
+            name: 'Microplastics',
+            description: mp.summary || 'Tiny plastic particles (<5mm) that can leach from packaging, food contact materials, or processing equipment into the product.',
+            status: 'harmful',
+            score: microplasticsScore(microplastics),
+            risks: mp.concern || 'Emerging research links microplastic exposure to inflammation, hormone disruption, and gut-microbiome changes. Particles have been detected in human blood, lungs, and placenta.',
+            benefits: null,
+            legalLimit: mp.limit || 'No federal limit currently set in the US. EU has restricted intentional microplastics under REACH (2023).',
+            healthGuideline: mp.guideline || 'Choose fresh, minimally-packaged foods. Avoid plastic containers when heating. Filter tap water.',
+            references: (mp.sources || []).join(' · ') || 'EWG · ConsumerLab · Lead Safe',
+            productName: name, productScore: safeScore
+          });
+          return;
+        }
         openIngredientDetail({
           name: f.name,
           description: f.body || (status === 'harmful'
@@ -531,36 +579,6 @@
           legalLimit: f.limit ? `${f.limit}${f.limitSource ? ` — ${f.limitSource}` : ''}` : null,
           healthGuideline: f.amount ? `Detected level: ${f.amount}${f.multiplier ? ` (${f.multiplier})` : ''}` : null,
           references: f.source || null,
-          productName: name,
-          productScore: safeScore
-        });
-      });
-    });
-
-    // Tap the Microplastics stat card → open the detail screen specifically
-    // for microplastics, with severity score derived from the status string.
-    tile.querySelectorAll('.sr-stat-card').forEach((card) => {
-      const lbl = card.querySelector('.sr-stat-label')?.textContent?.trim();
-      if (lbl !== 'Microplastics') return;
-      card.classList.add('clickable');
-      card.addEventListener('click', () => {
-        const mp = microplasticsDetail || {};
-        const sev = microplasticsScore(microplastics);
-        const stat = sev <= -3 ? 'harmful' : sev >= 3 ? 'beneficial' : 'neutral';
-        openIngredientDetail({
-          name: 'Microplastics',
-          description: mp.summary
-            || 'Tiny plastic particles (<5mm) that can leach from packaging, food contact materials, or processing equipment into the product.',
-          status: stat,
-          score: sev,
-          risks: mp.concern
-            || 'Emerging research links microplastic exposure to inflammation, hormone disruption, and gut-microbiome changes. Particles have been detected in human blood, lungs, and placenta.',
-          benefits: null,
-          legalLimit: mp.limit
-            || 'No federal limit currently set in the US. The EU has restricted intentional microplastics in some product categories under REACH (2023).',
-          healthGuideline: mp.guideline
-            || 'EWG and consumer-health groups recommend choosing fresh, minimally-packaged foods, avoiding plastic containers when heating, and filtering tap water.',
-          references: (mp.sources || []).join(' · ') || 'EWG · ConsumerLab · Lead Safe',
           productName: name,
           productScore: safeScore
         });
