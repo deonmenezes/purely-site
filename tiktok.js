@@ -85,7 +85,7 @@
   // Args: { name, description, status: 'harmful'|'beneficial'|'neutral',
   //         score (-5..5), scoreScale, risks, benefits, legalLimit,
   //         healthGuideline, references, productName, productScore }
-  const PURELY_LOGO_PATH = '/assets/purely-logo.webp';
+  const PURELY_LOGO_PATH = '/assets/purely-logo.png';
   function openIngredientDetail(opts) {
     closeIngredientDetail();
     const score = Number.isFinite(opts.score) ? opts.score : 0;
@@ -787,7 +787,7 @@
   }
 
   // ----- shared bits used by the new "Purely App"-branded screens -----
-  const PURELY_LOGO_URL = '/assets/purely-logo.webp';
+  const PURELY_LOGO_URL = '/assets/purely-logo.png';
   const PINWHEEL_HTML = `<span class="pinwheel"><img src="${PURELY_LOGO_URL}" alt=""></span>`;
   const PURELY_HEADER = (rightHtml) => `
     <div class="purely-header">
