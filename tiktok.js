@@ -340,6 +340,68 @@
     });
   }
 
+  // "Expand" button pinned to the top-left of the iPhone tile: tap to open
+  // the rendered Purely-app screen in a full-bleed fullscreen view that's
+  // properly sized for the user's actual phone (iPhone-aspect on desktop,
+  // edge-to-edge on phones). Solves the "tile is too small to read" problem.
+  function makeExpandBtn() {
+    return `<button class="fs-btn" title="Open full screen" aria-label="Open full screen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>`;
+  }
+  function attachExpand(tile) {
+    const btn = tile.querySelector('.fs-btn');
+    if (!btn) return;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openFullScreenView(tile);
+    });
+    // Tapping the screen itself (anywhere not a button) also expands
+    const screen = tile.querySelector('.pa-screen');
+    if (screen) {
+      screen.style.cursor = 'zoom-in';
+      screen.addEventListener('click', (e) => {
+        if (e.target.closest('.pa-stat-row')) return; // row clicks open detail modal
+        if (e.target.closest('button')) return;
+        openFullScreenView(tile);
+      });
+    }
+  }
+  function openFullScreenView(tile) {
+    const src = tile.querySelector('.pa-screen');
+    if (!src) return;
+    closeFullScreenView();
+    const overlay = document.createElement('div');
+    overlay.className = 'pa-fs-modal';
+    overlay.id = 'pa-fs-modal';
+    const cloned = src.cloneNode(true);
+    cloned.classList.add('pa-fs-screen');
+    overlay.innerHTML = `
+      <button class="pa-fs-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6l-12 12"/></svg>
+      </button>
+    `;
+    overlay.appendChild(cloned);
+    document.body.appendChild(overlay);
+    document.body.classList.add('pa-fs-open');
+    // Re-bind row clicks inside the cloned screen so detail modals still work
+    cloned.querySelectorAll('.pa-stat-row').forEach((row, idx) => {
+      const orig = src.querySelectorAll('.pa-stat-row')[idx];
+      if (!orig) return;
+      row.addEventListener('click', () => orig.click());
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.closest('.pa-fs-close')) closeFullScreenView();
+    });
+    document.addEventListener('keydown', _paFsEsc);
+  }
+  function _paFsEsc(e) { if (e.key === 'Escape') closeFullScreenView(); }
+  function closeFullScreenView() {
+    document.getElementById('pa-fs-modal')?.remove();
+    document.body.classList.remove('pa-fs-open');
+    document.removeEventListener('keydown', _paFsEsc);
+  }
+
   /* ============================================================
    *  V13 — One big beautiful scrollable Toxin Report screen.
    *  Used for BOTH the TikTok flow (per product) and the photo flow.
@@ -535,8 +597,10 @@
         </div>
       </div>
       ${makeDownloadBtn(filename)}
+      ${makeExpandBtn()}
     `);
     attachDownload(tile, filename);
+    attachExpand(tile);
 
     // Tap any substance row → open the ingredient-detail screen with the
     // -5..5 score slider, expandable Risks / Benefits / Legal limit / Health

@@ -1866,3 +1866,87 @@ body.ing-modal-open{overflow:hidden}
    the iPhone bezel is supplied by .mockup. Hide the page-level download
    button until hover (matches existing pattern). */
 .mockup .pa-screen{height:100%}
+
+/* Fullscreen-expand button on each iPhone tile (top-left corner) */
+.fs-btn{
+  position:absolute;top:10px;left:10px;z-index:5;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(255,255,255,.95);color:#1F1D1A;
+  border:0;cursor:pointer;display:grid;place-items:center;
+  box-shadow:0 6px 14px rgba(0,0,0,.25);
+  opacity:0;transform:translateY(-4px);
+  transition:opacity .2s, transform .2s, background .15s, color .15s;
+}
+.fs-btn svg{width:16px;height:16px}
+.mockup:hover .fs-btn{opacity:1;transform:translateY(0)}
+.fs-btn:hover{background:#1F1D1A;color:#fff}
+@media (hover:none){.fs-btn{opacity:1;transform:none}}
+
+/* Fullscreen modal: full-bleed pa-screen sized to a real iPhone */
+body.pa-fs-open{overflow:hidden}
+.pa-fs-modal{
+  position:fixed;inset:0;z-index:320;
+  background:radial-gradient(60% 70% at 50% 30%, rgba(47,58,53,.5), rgba(0,0,0,.85));
+  display:grid;place-items:center;
+  padding:24px;
+  animation:pa-fs-fade .2s ease-out;
+}
+@keyframes pa-fs-fade{from{opacity:0}to{opacity:1}}
+
+.pa-fs-screen{
+  /* Real iPhone proportions, with a dark bezel ring */
+  width:min(420px, 100%);height:min(900px, 92vh);
+  border-radius:46px;
+  overflow:hidden;display:flex;flex-direction:column;
+  background:#F7F5F0;
+  box-shadow:
+    0 0 0 8px #0c0c0e,
+    0 0 0 9.5px #2a2a2a,
+    0 40px 90px -20px rgba(0,0,0,.55),
+    0 6px 18px rgba(0,0,0,.18);
+  animation:pa-fs-rise .25s cubic-bezier(.2,.9,.2,1);
+}
+@keyframes pa-fs-rise{from{transform:translateY(20px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+
+/* Bigger, fully readable text inside the fullscreen view */
+.pa-fs-screen .pa-status{padding:14px 24px 6px;font-size:15px}
+.pa-fs-screen .pa-hdr{padding:10px 22px 14px}
+.pa-fs-screen .pa-hdr-pill{padding:9px 20px}
+.pa-fs-screen .pa-hdr-text{font-size:18px}
+.pa-fs-screen .pa-hdr-logo{width:24px;height:24px}
+.pa-fs-screen .pa-hero-card{width:240px;height:240px}
+.pa-fs-screen .pa-name{font-size:26px;line-height:1.15}
+.pa-fs-screen .pa-brand{font-size:17px}
+.pa-fs-screen .pa-tag{font-size:14px;padding:7px 16px}
+.pa-fs-screen .pa-score{width:128px;height:128px}
+.pa-fs-screen .pa-score-num{font-size:20px}
+.pa-fs-screen .pa-score-lbl{font-size:14px}
+.pa-fs-screen .pa-stat-rows{padding:6px 24px 14px}
+.pa-fs-screen .pa-stat-row{padding:15px 0;grid-template-columns:26px 1fr auto auto}
+.pa-fs-screen .pa-stat-lbl{font-size:17px}
+.pa-fs-screen .pa-stat-val{font-size:16px}
+.pa-fs-screen .pa-foot{padding:22px 0 28px;font-size:15px}
+.pa-fs-screen .pa-foot-name{font-size:17px}
+
+/* Close button — sits outside the iPhone bezel */
+.pa-fs-close{
+  position:absolute;top:24px;right:24px;z-index:325;
+  width:44px;height:44px;border-radius:50%;
+  background:rgba(255,255,255,.95);color:#1F1D1A;
+  border:0;cursor:pointer;display:grid;place-items:center;
+  box-shadow:0 6px 16px rgba(0,0,0,.3);
+  transition:background .15s, color .15s, transform .1s;
+}
+.pa-fs-close svg{width:20px;height:20px}
+.pa-fs-close:hover{background:#1F1D1A;color:#fff}
+.pa-fs-close:active{transform:scale(.94)}
+
+/* Phone-sized: drop the iPhone bezel, modal fills the viewport */
+@media (max-width:520px){
+  .pa-fs-modal{padding:0;background:#F7F5F0}
+  .pa-fs-screen{
+    width:100%;height:100vh;border-radius:0;box-shadow:none;
+  }
+  .pa-fs-status{padding-top:max(14px, env(safe-area-inset-top))}
+  .pa-fs-close{top:max(14px, env(safe-area-inset-top));right:14px}
+}
