@@ -18,7 +18,10 @@ const dbLookup = require('./_db-lookup');
 const crypto = require('crypto');
 
 const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
-const OCR_MODEL = (process.env.OCR_MODEL || 'gpt-5-nano').trim();
+// gpt-4o-mini is the fastest vision-capable model — non-reasoning, low
+// latency (~200-400ms cold, ~150ms warm), accurate on stylized labels.
+// Override via OCR_MODEL env var if you want to A/B against gpt-5-mini etc.
+const OCR_MODEL = (process.env.OCR_MODEL || 'gpt-4o-mini').trim();
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const supabase = createClient(
   SUPABASE_URL,

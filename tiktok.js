@@ -1884,7 +1884,7 @@
     }
     setStep('scrape', 'done');
     setStep('transcribe', 'active');
-    setProgress(30, '<strong>Reading label</strong> with gpt-5-nano vision…');
+    setProgress(30, '<strong>Reading label</strong> with gpt-4o-mini vision…');
 
     // Server-side flow: gpt-5-nano OCRs the label, server searches the
     // huge_dataset catalog, returns the matched product or a no_match payload.
