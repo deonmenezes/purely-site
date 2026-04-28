@@ -1,0 +1,210 @@
+/* Site-preview gallery — horizontal scroll row of page thumbnails with
+ * a Download PNG button on each card. Visual language picks up from
+ * styles.css (cream background, leaf-green accents, Inter typography). */
+
+.preview-page {
+  padding: 60px 0 80px;
+  background: linear-gradient(180deg, #F4F8F2 0%, #FFFFFF 100%);
+  min-height: calc(100vh - 80px);
+}
+
+.prev-hd {
+  text-align: center;
+  margin-bottom: 48px;
+}
+.prev-title {
+  font-size: clamp(36px, 5vw, 56px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: #1F1D1A;
+  margin: 14px 0 12px;
+  font-weight: 800;
+}
+.prev-title em {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+  color: #2f7a47;
+}
+.prev-sub {
+  color: #6B6762;
+  font-size: 17px;
+  max-width: 580px;
+  margin: 0 auto;
+  line-height: 1.55;
+}
+.prev-sub strong { color: #1F1D1A; font-weight: 600; }
+
+/* The scrolling card row */
+.ss-row {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  padding: 12px 4px 28px;
+  margin: 0 -4px;
+  scroll-snap-type: x proximity;
+  scroll-padding: 0 24px;
+  scrollbar-width: thin;
+}
+.ss-row::-webkit-scrollbar { height: 8px; }
+.ss-row::-webkit-scrollbar-thumb { background: #d9e7da; border-radius: 99px; }
+.ss-row::-webkit-scrollbar-track { background: transparent; }
+
+.ss-card {
+  flex: 0 0 auto;
+  width: 360px;
+  background: #FFF;
+  border: 1px solid #E3EBE5;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px -8px rgba(31, 29, 26, 0.06);
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+}
+.ss-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px -16px rgba(31, 29, 26, 0.18);
+  border-color: #c8dcce;
+}
+
+.ss-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: linear-gradient(135deg, #f0f5ee, #e3ebe5);
+  overflow: hidden;
+  cursor: pointer;
+}
+.ss-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+  background: #f0f5ee;
+  transition: opacity .25s;
+}
+.ss-thumb img.loading { opacity: 0; }
+.ss-thumb-spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: #6B6762;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.ss-thumb-spinner.hidden { display: none; }
+.ss-thumb-spinner::before {
+  content: '';
+  width: 22px; height: 22px;
+  border: 2.5px solid #c8dcce;
+  border-top-color: #2f7a47;
+  border-radius: 50%;
+  animation: ss-spin .9s linear infinite;
+  margin-right: 10px;
+}
+@keyframes ss-spin { to { transform: rotate(360deg); } }
+
+.ss-meta {
+  padding: 18px 20px 8px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ss-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1F1D1A;
+  letter-spacing: -0.01em;
+}
+.ss-path {
+  font-size: 13px;
+  color: #9B958D;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.ss-desc {
+  padding: 0 20px 16px;
+  font-size: 14px;
+  color: #6B6762;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.ss-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 16px;
+  border-top: 1px solid #F0F0EE;
+  padding-top: 14px;
+}
+.ss-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 0;
+  transition: background .15s, transform .1s;
+  text-decoration: none;
+}
+.ss-btn svg { width: 14px; height: 14px; }
+.ss-btn.primary {
+  background: #1F1D1A;
+  color: #FFF;
+}
+.ss-btn.primary:hover { background: #2f7a47; }
+.ss-btn.primary.busy { opacity: 0.7; pointer-events: none; }
+.ss-btn.primary.busy::before {
+  content: '';
+  width: 12px; height: 12px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #FFF;
+  border-radius: 50%;
+  animation: ss-spin .8s linear infinite;
+  margin-right: 4px;
+}
+.ss-btn.secondary {
+  background: #F0F5EE;
+  color: #1F1D1A;
+}
+.ss-btn.secondary:hover { background: #E3EBE5; }
+.ss-btn:active { transform: scale(.97); }
+
+/* Toast (re-uses the variable from styles.css if defined, falls back here) */
+.preview-page ~ .toast,
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translate(-50%, 8px);
+  background: #1F1D1A;
+  color: #FFF;
+  padding: 12px 22px;
+  border-radius: 99px;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity .25s, transform .25s;
+  z-index: 200;
+  box-shadow: 0 8px 24px -8px rgba(0,0,0,.3);
+}
+.toast.ok { background: #2f7a47; }
+.toast.err { background: #c84a4a; }
+
+@media (max-width: 720px) {
+  .preview-page { padding: 40px 0 60px; }
+  .ss-card { width: 84vw; }
+  .prev-title { font-size: 36px; }
+}
