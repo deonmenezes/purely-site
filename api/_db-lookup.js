@@ -45,38 +45,64 @@ const COLS = [
   'recall_title','recall_severity','affiliate_url','data'
 ].join(',');
 
-// Run a PostgREST query that ANDs every passed token against `name`. PostgREST
-// repeats filter params as AND, so `?name=ilike.*a*&name=ilike.*b*` requires
-// both. Tokens are sorted longest-first (more distinctive) before ANDing.
-async function searchAnd(tokens, headers) {
-  if (tokens.length === 0) return [];
+// Run a PostgREST query that ANDs every passed token against `name`, optionally
+// scoped to a specific brand. PostgREST repeats filter params as AND, so
+// `?name=ilike.*a*&name=ilike.*b*&brand_name=ilike.*c*` requires all three.
+async function searchAnd(tokens, headers, brandHint) {
+  if (tokens.length === 0 && !brandHint) return [];
   const params = new URLSearchParams();
   params.append('select', COLS);
   for (const t of tokens) params.append('name', `ilike.*${t}*`);
+  if (brandHint) params.append('brand_name', `ilike.*${String(brandHint).toLowerCase()}*`);
   params.append('limit', '20');
   const url = `${HUGE_URL}/rest/v1/items_full?${params.toString()}`;
   try { return await fetchJson(url, headers); }
   catch { return []; }
 }
 
-async function findItem(ocrText) {
+/**
+ * Look up an item using the OCR'd product info. When `brandHint` is provided
+ * (from gpt-4o-mini's structured extraction), we FIRST require the matched
+ * row's `brand_name` to contain that brand — guarantees brand consistency
+ * (e.g. "Kirkland Signature" OCR → only Kirkland products). Falls back to
+ * a name-only search when the brand-scoped query yields nothing.
+ */
+async function findItem(ocrText, brandHint) {
   if (!HUGE_URL || !HUGE_ANON) return null;
   const tokens = tokenize(ocrText);
-  if (tokens.length === 0) return null;
+  if (tokens.length === 0 && !brandHint) return null;
 
   const headers = { apikey: HUGE_ANON, Authorization: `Bearer ${HUGE_ANON}` };
+  const brandLower = String(brandHint || '').toLowerCase().trim();
 
   // Sort longest-first — long words ("kirkland", "signature") are far more
   // selective than short ones ("oil", "tea").
   const distinctive = [...tokens].sort((a, b) => b.length - a.length);
 
-  // Try ANDs from most → least restrictive: 4 tokens, then 3, then 2.
-  // The first non-empty result set is what we rank.
   let rows = [];
-  for (const n of [4, 3, 2]) {
-    if (distinctive.length < n) continue;
-    rows = await searchAnd(distinctive.slice(0, n), headers);
-    if (rows.length) break;
+
+  // TIER 1: brand + name AND search. Most precise — only items from the
+  // matching brand qualify.
+  if (brandLower) {
+    for (const n of [3, 2, 1]) {
+      if (distinctive.length < n) continue;
+      rows = await searchAnd(distinctive.slice(0, n), headers, brandLower);
+      if (rows.length) break;
+    }
+    // Brand alone (no name tokens) — rare but catches scans that read only the wordmark.
+    if (!rows.length && distinctive.length === 0) {
+      rows = await searchAnd([], headers, brandLower);
+    }
+  }
+
+  // TIER 2: name-only AND search (fallback when brand-scoped found nothing,
+  // or when no brand was extracted at all).
+  if (!rows.length) {
+    for (const n of [4, 3, 2]) {
+      if (distinctive.length < n) continue;
+      rows = await searchAnd(distinctive.slice(0, n), headers);
+      if (rows.length) break;
+    }
   }
   if (!rows.length) return null;
 
@@ -85,6 +111,13 @@ async function findItem(ocrText) {
       const hay = `${row.name} ${row.brand_name || ''}`.toLowerCase();
       let s = 0;
       for (const t of tokens) if (hay.includes(t)) s++;
+      // Strong consistency bonus for brand matches — the user wants the
+      // result to match the brand they scanned, not just share keywords.
+      if (brandLower) {
+        const dbBrand = String(row.brand_name || '').toLowerCase();
+        if (dbBrand === brandLower) s += 5;
+        else if (dbBrand && (dbBrand.includes(brandLower) || brandLower.includes(dbBrand))) s += 3;
+      }
       const expected = tokens.length * 5;
       const lenPenalty = Math.min(1, Math.abs(row.name.length - expected) / 60);
       return { row, score: s - lenPenalty };

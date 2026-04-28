@@ -61,16 +61,22 @@ async function fetchAsDataUrl(url, maxBytes = 8 * 1024 * 1024) {
   } catch { return null; }
 }
 
-const OCR_SYSTEM_PROMPT = `You are a product-label reader. Look at the photo and return ONLY a JSON object describing what is printed on the label — exactly as written. Do not analyze, do not judge, do not invent fields. If you cannot read something, leave it empty.
+const OCR_SYSTEM_PROMPT = `You are a product-label reader for a database lookup. Read the label and return a JSON object so we can search a product catalog. Be EXACT and precise — do not invent. If you cannot read something, leave it empty.
 
-Return this exact shape:
+CRITICAL — distinguish brand from product name:
+- BRAND is the company that makes the product. Usually the largest wordmark, often stylized, repeated across their whole product line. Examples: "Liquid Death", "Kirkland Signature", "FIJI", "Coca-Cola", "siggi's", "Sparkling Ice", "Sparkling Ice Caffeine".
+- NAME is the variant / flavor / size — what makes THIS specific product different from others by the same brand. Examples: "Mountain Water", "Tropical Punch", "Strawberry Skyr", "Ultra-Filtered Reduced Fat Milk".
+- "Liquid Death Mountain Water" → brand: "Liquid Death", name: "Mountain Water". NEVER swap these.
+- If a product wordmark is stylized (gothic, blackletter, scripted), it's still the BRAND.
+
+Return this exact shape, nothing else:
 {
-  "brand": "the brand name as it appears, exactly (e.g. \\"Kirkland Signature\\", \\"siggi's\\", \\"FIJI\\")",
-  "name": "the product name (variant, flavor, type) as printed (e.g. \\"Ultra-Filtered Reduced Fat Milk\\", \\"Strawberry Skyr\\")",
-  "type": "best one-word category guess (water, milk, yogurt, cereal, bar, supplement, soda, juice, snack, shampoo, cleaner, etc.)",
-  "keywords": ["3-6 distinctive search words from the label, lowercase, no stopwords"],
-  "barcode": "the UPC/EAN digits if visible, else empty",
-  "confidence": "high|medium|low"
+  "brand": "the BRAND name exactly as printed (largest wordmark)",
+  "name": "the product variant / flavor / size (NOT the brand)",
+  "type": "single word category: water, milk, yogurt, cereal, bar, supplement, soda, juice, snack, shampoo, cleaner, etc.",
+  "keywords": ["3-6 distinctive label words, lowercase, no stopwords, no brand"],
+  "barcode": "UPC/EAN digits if visible, else empty",
+  "confidence": "high | medium | low"
 }`;
 
 async function extractProductInfo(dataUrl) {
@@ -144,8 +150,12 @@ module.exports = async function handler(req, res) {
       catch (e) { console.warn('[analyze-product] barcode lookup failed:', e.message); }
     }
     if (!item && searchText) {
-      try { item = await dbLookup.findItem(searchText); }
-      catch (e) { console.warn('[analyze-product] db lookup failed:', e.message); }
+      try {
+        // Pass the OCR'd brand as a hint so the DB lookup tightens to that
+        // brand first — prevents "Liquid Death Mountain Water" from matching
+        // a Sparkling Ice product because both share token "punch"/"can".
+        item = await dbLookup.findItem(searchText, extracted.brand || '');
+      } catch (e) { console.warn('[analyze-product] db lookup failed:', e.message); }
     }
 
     if (item) {
