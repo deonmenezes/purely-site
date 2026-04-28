@@ -1469,39 +1469,43 @@
     return downloadElement(screen, filename);
   }
 
-  // Generic "capture this DOM element as a high-res PNG" helper. Used by
-  // the iPhone-mockup download button AND the ingredient-detail modal Save.
-  async function downloadElement(screen, filename) {
-    const h2c = await loadHtml2Canvas();
+  // Trigger a single PNG download from a data URL. Returns once the click is
+  // dispatched; caller should sleep ~200ms between calls so browsers don't
+  // batch-collapse multiple downloads.
+  function triggerPngDownload(dataUrl, filename) {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
 
-    // Wait for any inline images (proxied product photo) to finish loading
-    // — html2canvas snapshots half-loaded <img>s as blank otherwise.
+  // Render the element to a canvas via html2canvas. Same off-screen-clone
+  // pipeline used since v1 — bypasses the visible-only capture limit so the
+  // full scroll-height of a long screen is rendered.
+  async function captureElementCanvas(screen) {
+    const h2c = await loadHtml2Canvas();
     const imgs = Array.from(screen.querySelectorAll('img'));
     await Promise.all(imgs.map((img) => (img.complete && img.naturalWidth > 0)
       ? null
       : new Promise((res) => { img.onload = img.onerror = res; setTimeout(res, 4000); })));
 
-    // Clone off-screen at a fixed marketing width (440px = ~iPhone Pro)
-    // and let it expand to its natural scroll-height. This bypasses the
-    // visible-only capture limit when the app-screen is scrollable.
     const clone = screen.cloneNode(true);
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:fixed;top:0;left:-12000px;z-index:-1;pointer-events:none;background:#FFF';
     Object.assign(clone.style, {
       position: 'static', inset: 'auto', width: '440px', height: 'auto',
-      maxHeight: 'none', overflow: 'visible', transform: 'none', background: '#FFF'
+      maxHeight: 'none', overflow: 'visible', transform: 'none', background: '#F7F5F0'
     });
     wrap.appendChild(clone);
     document.body.appendChild(wrap);
-
     try {
-      // Force reflow so scrollHeight is accurate
       void clone.offsetHeight;
       const fullHeight = Math.max(clone.scrollHeight, clone.offsetHeight);
-
-      const canvas = await h2c(clone, {
-        backgroundColor: '#FFFFFF',
-        scale: 3, // 440 × 3 = 1320px wide PNG — looks crisp at 2x retina
+      return await h2c(clone, {
+        backgroundColor: '#F7F5F0',
+        scale: 3,
         useCORS: true,
         logging: false,
         width: 440,
@@ -1510,13 +1514,48 @@
         windowHeight: fullHeight,
         imageTimeout: 8000
       });
-      const dataUrl = canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = dataUrl; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
     } finally {
       wrap.remove();
     }
+  }
+
+  // Slice a canvas vertically into 9:16 (portrait) PNG chunks and trigger a
+  // download for each. If the captured content already fits inside a single
+  // 9:16 frame, downloads as one PNG (no padding). Otherwise produces
+  // ceil(height / sliceHeight) segments named `<base>-1.png`, `<base>-2.png`…
+  async function downloadCanvasAs9x16(canvas, baseFilename) {
+    const W = canvas.width;
+    const totalH = canvas.height;
+    const sliceH = Math.round(W * 16 / 9);
+    // 5% tolerance — if it's almost-but-not-quite 9:16, ship as one PNG.
+    if (totalH <= sliceH * 1.05) {
+      triggerPngDownload(canvas.toDataURL('image/png'), baseFilename + '.png');
+      return 1;
+    }
+    const sliceCount = Math.ceil(totalH / sliceH);
+    for (let i = 0; i < sliceCount; i++) {
+      const offsetY = i * sliceH;
+      const drawH = Math.min(sliceH, totalH - offsetY);
+      const slice = document.createElement('canvas');
+      slice.width = W;
+      slice.height = sliceH;
+      const ctx = slice.getContext('2d');
+      // Match the preview background so any padded area (last slice) blends in.
+      ctx.fillStyle = '#F7F5F0';
+      ctx.fillRect(0, 0, W, sliceH);
+      ctx.drawImage(canvas, 0, offsetY, W, drawH, 0, 0, W, drawH);
+      triggerPngDownload(slice.toDataURL('image/png'), `${baseFilename}-${i + 1}.png`);
+      // Brief gap so browsers don't collapse the multi-download permission.
+      await new Promise((r) => setTimeout(r, 220));
+    }
+    return sliceCount;
+  }
+
+  // Public download helper. Auto-segments long screens into 9:16 chunks.
+  async function downloadElement(screen, filename) {
+    const canvas = await captureElementCanvas(screen);
+    const base = filename.replace(/\.png$/i, '');
+    return downloadCanvasAs9x16(canvas, base);
   }
 
   function extractTikTokUrl(raw) {
