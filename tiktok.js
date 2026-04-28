@@ -590,11 +590,19 @@
         })
       : null;
     const insideListHtml = ingsForList && ingsForList.length
-      ? ingsForList.map((i) => `
-          <div class="pa-inside-card ${i.status === 'harmful' ? 'bad' : i.status === 'beneficial' ? 'good' : 'neutral'}">
-            <div class="pa-inside-name">${escapeHtml((i.name || '').slice(0, 80))}</div>
-            <div class="pa-inside-desc">${escapeHtml(String(i.description || '').slice(0, 260))}</div>
-          </div>`).join('')
+      ? ingsForList.map((i, idx) => {
+          const score = Number.isFinite(i.score) ? i.score : (i.severity_score > 0 ? -i.severity_score : i.bonus_score || 0);
+          const scoreLabel = score > 0 ? `+${score}` : `${score}`;
+          const scoreCls = score < 0 ? 'bad' : score > 0 ? 'good' : 'neutral';
+          return `
+            <div class="pa-inside-card ${i.status === 'harmful' ? 'bad' : i.status === 'beneficial' ? 'good' : 'neutral'}" data-ing-idx="${idx}">
+              <div class="pa-inside-card-head">
+                <span class="pa-inside-name">${escapeHtml((i.name || '').slice(0, 80))}</span>
+                <span class="pa-inside-score ${scoreCls}">${scoreLabel}</span>
+              </div>
+              <div class="pa-inside-desc">${escapeHtml(String(i.description || '').slice(0, 260))}</div>
+            </div>`;
+        }).join('')
       // Fallback to legacy findings-driven list when DB had no match.
       : (findings.length ? findings.map((f, idx) => {
           const stat = f.kind === 'bad' ? 'bad' : f.kind === 'good' ? 'good' : 'neutral';
@@ -828,15 +836,43 @@
       });
     });
 
-    // Tapping any "What's inside" card opens the same detail modal as the
-    // matching substance row — keeps the two sections behaviourally aligned.
+    // Tap any "What's inside" card → open the per-ingredient detail screen.
+    // DB-driven cards (data-ing-idx) get the rich Risks/Benefits/Legal limit
+    // /Health guideline/References pulled from the ingredients table. Legacy
+    // findings cards (data-finding-idx) still proxy through pa-stat-row click.
     tile.querySelectorAll('.pa-inside-card').forEach((card) => {
-      const idx = Number(card.dataset.findingIdx);
-      const row = tile.querySelectorAll('.pa-stat-row')[idx];
-      if (!row) return;
       card.style.cursor = 'pointer';
-      card.addEventListener('click', () => row.click());
+      if (card.dataset.ingIdx != null && ingsForList) {
+        const idx = Number(card.dataset.ingIdx);
+        const ing = ingsForList[idx];
+        if (!ing) return;
+        card.addEventListener('click', () => {
+          openIngredientDetail({
+            name: ing.name,
+            description: ing.description,
+            status: ing.status,
+            score: ing.score,
+            risks: ing.risks || (ing.status === 'harmful' ? ing.description : null),
+            benefits: ing.benefits || (ing.status === 'beneficial' ? ing.description : null),
+            legalLimit: ing.legal_limit || null,
+            healthGuideline: ing.health_guideline || null,
+            references: ing.sources || null,
+            productName: name,
+            productScore: safeScore
+          });
+        });
+      } else {
+        const idx = Number(card.dataset.findingIdx);
+        const row = tile.querySelectorAll('.pa-stat-row')[idx];
+        if (row) card.addEventListener('click', () => row.click());
+      }
     });
+
+    // Stash the ingredient list on the tile so "Save all screens" can iterate
+    // and render each detail screen offscreen for capture.
+    if (ingsForList) tile._ingredients = ingsForList;
+    tile._productName = name;
+    tile._productScore = safeScore;
   }
 
   function renderTikTokScreen(tile, product, coverImage) {
@@ -1976,6 +2012,155 @@
     if (tile) renderPhotoScreen(tile, payload, displayImage);
     setStep('images', 'done');
     setProgress(100, `<strong>Done</strong> — rendered from Purely DB.`);
+
+    // Wire the "Save all screens" button: grab the main preview + every
+    // ingredient detail (rendered offscreen) as separate PNGs.
+    const saveAllBtn = document.getElementById('pr-save-all');
+    if (saveAllBtn) {
+      saveAllBtn.addEventListener('click', async () => {
+        if (saveAllBtn.classList.contains('busy')) return;
+        await saveAllScreens(tile, saveAllBtn, payload);
+      });
+    }
+  }
+
+  /**
+   * Captures the main interactive preview + every ingredient detail screen
+   * and triggers a separate PNG download for each. Ingredient screens are
+   * rendered offscreen via the same DOM the click-handler would build, so
+   * the user doesn't see flickering modals during the bulk save.
+   */
+  async function saveAllScreens(tile, btn, payload) {
+    const lbl = btn.querySelector('span');
+    const origLbl = lbl ? lbl.textContent : '';
+    btn.classList.add('busy');
+    if (lbl) lbl.textContent = 'Saving…';
+    let total = 0;
+    try {
+      const ingredients = (tile && tile._ingredients) || [];
+      const productName = (tile && tile._productName) || (payload?.matchedName || 'product');
+      const productScore = (tile && tile._productScore) || (payload?.analysis?.score || 0);
+      const safeProduct = String(productName).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+      // 1. Main interactive preview
+      const mainScreen = tile.querySelector('.app-screen');
+      if (mainScreen) {
+        if (lbl) lbl.textContent = `Saving 1 / ${1 + ingredients.length}…`;
+        await downloadElement(mainScreen, `purely-${safeProduct}-overview.png`);
+        total++;
+        await sleep(250);
+      }
+
+      // 2. Each ingredient detail
+      for (let i = 0; i < ingredients.length; i++) {
+        const ing = ingredients[i];
+        if (lbl) lbl.textContent = `Saving ${i + 2} / ${1 + ingredients.length}…`;
+        const node = buildIngredientScreenOffscreen({
+          name: ing.name,
+          description: ing.description,
+          status: ing.status,
+          score: ing.score,
+          risks: ing.risks || (ing.status === 'harmful' ? ing.description : ''),
+          benefits: ing.benefits || (ing.status === 'beneficial' ? ing.description : ''),
+          legalLimit: ing.legal_limit || '',
+          healthGuideline: ing.health_guideline || '',
+          references: ing.sources || '',
+          productName,
+          productScore
+        });
+        try {
+          const safeIng = String(ing.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          await downloadElement(node, `purely-${safeProduct}-${safeIng}.png`);
+          total++;
+          await sleep(250);
+        } finally {
+          node.parentNode?.remove();
+        }
+      }
+      showToast(`Saved ${total} screen${total === 1 ? '' : 's'}`, 'ok');
+    } catch (e) {
+      showToast('Save failed: ' + (e.message || e), 'err');
+    } finally {
+      btn.classList.remove('busy');
+      if (lbl) lbl.textContent = origLbl;
+    }
+  }
+
+  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+  // Build an .ing-screen DOM node off-screen with the same markup the modal
+  // would render. Returns the .ing-screen element (caller must remove the
+  // wrapper from document.body when done).
+  function buildIngredientScreenOffscreen(opts) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;top:0;left:-12000px;z-index:-1;pointer-events:none;background:#FFF';
+    const score = Number.isFinite(opts.score) ? opts.score : 0;
+    const min = -5, max = 5;
+    const clamped = Math.max(min, Math.min(max, score));
+    const sliderPct = ((clamped - min) / (max - min)) * 100;
+    const status = opts.status || 'neutral';
+    const sections = [
+      { key: 'risks',     title: 'Risks',           body: opts.risks },
+      { key: 'benefits',  title: 'Benefits',        body: opts.benefits },
+      { key: 'legal',     title: 'Legal limit',     body: opts.legalLimit },
+      { key: 'guideline', title: 'Health guideline', body: opts.healthGuideline },
+      { key: 'refs',      title: 'References',      body: opts.references }
+    ];
+    const screen = document.createElement('div');
+    screen.className = 'ing-screen';
+    screen.style.cssText = 'width:420px;height:auto;max-height:none;background:#F7F5F0;border-radius:32px;overflow:visible';
+    screen.innerHTML = `
+      <div class="ing-hdr">
+        <button class="ing-hdr-btn" aria-label="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="ing-hdr-center">
+          <img src="${PURELY_LOGO_PATH}" alt="" class="ing-logo" width="24" height="24" style="width:24px;height:24px;object-fit:contain;flex:0 0 auto">
+          <span class="ing-wordmark">Purely App</span>
+        </div>
+        <span class="ing-hdr-btn" aria-hidden="true"></span>
+      </div>
+      <div class="ing-body" style="overflow:visible;max-height:none">
+        <div class="ing-name-card">
+          <div class="ing-name">${escapeHtml(opts.name || 'Ingredient')}</div>
+          ${opts.description ? `<div class="ing-desc">${escapeHtml(opts.description)}</div>` : ''}
+        </div>
+        <div class="ing-score-card ${status === 'harmful' ? 'bad' : status === 'beneficial' ? 'good' : ''}">
+          <div class="ing-score-hd">
+            <span class="ing-score-lbl">Score</span>
+            <span class="ing-score-scale">-5 to 5 scale</span>
+          </div>
+          <div class="ing-score-num">${score}</div>
+          <div class="ing-slider">
+            <div class="ing-slider-track"></div>
+            <div class="ing-slider-thumb" style="left:${sliderPct.toFixed(1)}%"></div>
+          </div>
+          <div class="ing-slider-labels">
+            <span><strong>−5</strong><em>Very bad</em></span>
+            <span><strong>0</strong><em>Okay</em></span>
+            <span><strong>5</strong><em>Very good</em></span>
+          </div>
+        </div>
+        ${sections.map((sec) => `
+          <div class="ing-accord open" data-key="${sec.key}">
+            <button class="ing-accord-hd">
+              <span class="ing-accord-title">${sec.title}</span>
+            </button>
+            <div class="ing-accord-body" style="grid-template-rows:1fr">
+              <p>${escapeHtml(sec.body || 'No data available for this section yet.')}</p>
+            </div>
+          </div>
+        `).join('')}
+        ${opts.productName ? `
+          <div class="ing-foot">
+            <span class="ing-foot-name">${escapeHtml(opts.productName)}</span>
+            ${Number.isFinite(opts.productScore) ? `<span class="ing-foot-score">Product score ${opts.productScore}/100</span>` : ''}
+          </div>` : ''}
+      </div>
+    `;
+    wrap.appendChild(screen);
+    document.body.appendChild(wrap);
+    return screen;
   }
 
   function dotColor(verdict) {
@@ -2071,8 +2256,16 @@
         </div>
 
         <div class="pr-section">
-          <h3>Interactive preview</h3>
-          <p class="pr-section-sub">Scroll inside, tap any ingredient card to open its detail screen, or hit <strong>Save PNG</strong> to download.</p>
+          <div class="pr-section-hd">
+            <div>
+              <h3>Interactive preview</h3>
+              <p class="pr-section-sub">Scroll, tap any ingredient card to open its detail screen, or save individual / all screens as PNG.</p>
+            </div>
+            <button class="pr-save-all" id="pr-save-all" title="Download main preview + every ingredient detail screen as separate PNGs">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Save all screens</span>
+            </button>
+          </div>
           <div class="pr-app-preview" data-screen="report">
             <div class="skel"></div>
           </div>

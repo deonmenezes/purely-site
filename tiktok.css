@@ -2238,3 +2238,50 @@ body.pa-fs-open{overflow:hidden}
 .ing-hdr-btn.ing-dl-btn:hover{background:#2f7a47;color:#fff}
 .ing-hdr-btn.ing-dl-btn.busy{background:#2f7a47;color:#fff;pointer-events:none}
 .ing-hdr-btn.ing-dl-btn.busy svg{animation:spin 1s linear infinite}
+
+/* "What's inside" cards now show the per-ingredient -5..5 score next to
+   the name. Color matches the card border (red bad / green good / gray neutral). */
+.pa-inside-card-head{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:12px;margin-bottom:6px;
+}
+.pa-inside-card-head .pa-inside-name{margin-bottom:0;flex:1 1 auto}
+.pa-inside-score{
+  flex:0 0 auto;
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:38px;height:26px;padding:0 10px;border-radius:99px;
+  font-size:12px;font-weight:800;letter-spacing:.01em;
+  font-variant-numeric:tabular-nums;
+  background:#F0EEE9;color:#6B6762;
+}
+.pa-inside-score.bad{background:#FBE7E7;color:#C84A4A}
+.pa-inside-score.good{background:#E4F1E8;color:#3F9A5D}
+.pa-inside-score.neutral{background:#F0EEE9;color:#6B6762}
+
+/* Section header layout — title on the left, "Save all screens" pill
+   on the right. Wraps gracefully on narrow screens. */
+.pr-section-hd{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  gap:18px;flex-wrap:wrap;margin-bottom:6px;
+}
+.pr-section-hd > div{flex:1 1 auto;min-width:0}
+.pr-section-hd h3{margin:0 0 4px}
+
+.pr-save-all{
+  flex:0 0 auto;
+  display:inline-flex;align-items:center;gap:8px;
+  height:42px;padding:0 18px 0 14px;border-radius:99px;
+  background:#1F1D1A;color:#FFF;
+  border:0;cursor:pointer;
+  font-size:14px;font-weight:700;letter-spacing:-.005em;
+  transition:background .15s, transform .1s, box-shadow .15s;
+  box-shadow:0 6px 14px -6px rgba(31,29,26,.4);
+}
+.pr-save-all svg{width:16px;height:16px;flex:0 0 auto}
+.pr-save-all:hover{background:#2f7a47;box-shadow:0 8px 18px -6px rgba(47,122,71,.5)}
+.pr-save-all:active{transform:scale(.97)}
+.pr-save-all.busy{background:#2f7a47;pointer-events:none;opacity:.85}
+.pr-save-all.busy svg{animation:spin 1s linear infinite}
+@media (max-width:520px){
+  .pr-save-all{width:100%;justify-content:center;height:40px;font-size:13px}
+}

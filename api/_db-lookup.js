@@ -341,22 +341,38 @@ function buildAnalysisFromItem(item) {
   const subcategory = (item.type || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   // Full ingredient list (every ingredient on file) — drives the "What's
-  // inside" cards in the mockup. Status is derived from the same severity /
-  // bonus signals used by the mobile app's productDetailToAnalyzedProduct.
+  // inside" cards AND the per-ingredient detail screen (-5..5 score, real
+  // risks/benefits/legal limit/health guideline pulled from the ingredients
+  // table). Score range mirrors the mobile app: harmful → negative, beneficial → positive.
   const allIngredients = ings.map((i) => {
     const sev = Number(i.severity_score) || 0;
     const bon = Number(i.bonus_score) || 0;
     const status = sev >= 1 ? 'harmful' : bon >= 1 ? 'beneficial' : 'neutral';
+    const detail = i.details || {};
+    const score = sev > 0 ? -sev : bon > 0 ? bon : 0;
     return {
-      name: i.name || i.details?.name || 'Ingredient',
+      name: i.name || detail.name || 'Ingredient',
       status,
       description:
-        i.details?.description
-        || (status === 'harmful'  ? (i.details?.risks    || `Flagged with severity score ${sev} in the Purely database.`)
-          : status === 'beneficial' ? (i.details?.benefits || `Adds bonus ${bon} for ingredient quality.`)
+        detail.description
+        || (status === 'harmful'  ? (detail.risks    || `Flagged with severity score ${sev} in the Purely database.`)
+          : status === 'beneficial' ? (detail.benefits || `Adds bonus ${bon} for ingredient quality.`)
           : 'Common ingredient with no flagged risks or special benefits in our database.'),
       severity_score: sev,
-      bonus_score: bon
+      bonus_score: bon,
+      score, // -5..5 for the detail screen slider
+      // Real DB fields for the ingredient detail screen accordion:
+      risks: detail.risks || '',
+      benefits: detail.benefits || '',
+      legal_limit: detail.legal_limit != null
+        ? `${detail.legal_limit}${detail.measure ? ` ${detail.measure}` : ''}`
+        : '',
+      health_guideline: detail.health_guideline != null
+        ? `${detail.health_guideline}${detail.measure ? ` ${detail.measure}` : ''}`
+        : '',
+      sources: Array.isArray(detail.sources)
+        ? detail.sources.map((s) => s && (s.label || s.url)).filter(Boolean).join(' · ')
+        : ''
     };
   });
 
