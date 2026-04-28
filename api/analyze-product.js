@@ -1,16 +1,18 @@
 /**
- * POST /api/analyze-product { imageUrl }
- * Sends the product photo to GPT-4o vision with Purely's ruthless scoring rubric.
- * Returns structured JSON used by the UI and the mockup generator.
+ * POST /api/analyze-product { imageUrl, ocrText, refresh }
  *
- * The image must already be hosted (e.g. uploaded via /api/sign-upload to Supabase).
+ * Looks up the product in the huge_dataset Supabase project using OCR text
+ * extracted client-side by Tesseract.js. Returns the curated DB row mapped
+ * to the AnalyzedProduct shape (real score, real ingredients, real nutrients,
+ * mirrored image). If no DB match, returns a structured "no_match" payload
+ * — no OpenAI fallback. The UI renders a "not in our database yet" message
+ * for unmatched products.
  */
 const { createClient } = require('@supabase/supabase-js');
 const { guard } = require('./_security');
-const { PURELY_RULES } = require('./_purely-prompt');
+const dbLookup = require('./_db-lookup');
 const crypto = require('crypto');
 
-const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const supabase = createClient(
   SUPABASE_URL,
@@ -21,90 +23,8 @@ const BUCKET = 'influencer-uploads';
 
 function bad(res, code, msg) { return res.status(code).json({ error: msg }); }
 
-const SYSTEM_PROMPT = `${PURELY_RULES}
-
-Return STRICT JSON in this exact shape — no prose, no markdown fences. Every field must be populated. Microplastics MUST have a real status (use the rule above; never default to "No data" for bottled water or other well-studied categories). Contaminants/harmful/beneficial arrays should reflect everything you know about this product, not just the visible label.
-
-CRITICAL CONTENT REQUIREMENTS:
-- contaminants[] + harmfulIngredients[] combined MUST contain at least 3 entries for any product. Use category knowledge: bottled water → microplastics, BPA/phthalates from packaging, fluoride, sodium, source disclosure; processed foods → enriched flour, refined oils, added sugar, preservatives, artificial colors; protein bars → sweeteners, palm oil, soy lecithin, emulsifiers; dairy → hormones, antibiotics residues; cosmetics → parabens, fragrance, sulfates.
-- beneficialAttributes[] should list any genuine positives (e.g. "BPA-free packaging", "Triple filtration", "Whole grain", "Cold-pressed", "Third-party tested"). At least 1 entry when applicable.
-- uiSummary.topAttributes[] MUST contain 4-6 entries. Each entry is a "category quality / specific value" row shown directly in the app UI. Examples: {label:"Microplastics", value:"Detected (12 particles/L)", verdict:"bad"}, {label:"Source water", value:"Public tap (filtered)", verdict:"warn"}, {label:"Packaging", value:"PET plastic — phthalates risk", verdict:"bad"}, {label:"Mineral content", value:"Negligible", verdict:"warn"}, {label:"Sodium", value:"<5mg", verdict:"good"}.
-- Never return empty arrays unless the product genuinely has no concerns. Use real-world product knowledge to enrich the analysis beyond what's visible on the label.
-{
-  "product": {
-    "name": "string",
-    "brand": "string or empty",
-    "category": "water|food|supplement|clothing|cosmetic|personal-care|other",
-    "subcategory": "short string e.g. 'Bottled Water', 'Protein Bar'",
-    "image_subject": "concise visual description: shape, color, packaging style, label, container type",
-    "package_color": "one word"
-  },
-  "score": 0-100 integer,
-  "verdict": "Excellent | Good | Okay | Poor | Very Poor | Bad",
-  "headline": "1 sentence summary of why the score is what it is",
-  "harmfulCount": integer,
-  "beneficialCount": integer,
-  "microplastics": {
-    "status": "Detected|Likely|Not Detected|No data available",
-    "level": "string or empty",
-    "context": "1 sentence",
-    "source": "string"
-  },
-  "contaminants": [
-    {
-      "name": "string",
-      "amount": "string with units (e.g. '0.006 mg/L') or 'Trace' or 'Detected'",
-      "limit": "string with regulatory/health guideline limit",
-      "limitSource": "EPA|WHO|California Prop 65|...",
-      "status": "ABOVE | AT LIMIT | TRACE | NON-DETECT",
-      "multiplier": "string e.g. '9× above EPA health guideline' or 'Below limit'",
-      "concern": "1 sentence — what this does to the body",
-      "source": "Named source (e.g. 'EWG Tap Water Database', 'Lead Safe Mama')"
-    }
-  ],
-  "harmfulIngredients": [
-    {
-      "name": "ingredient",
-      "reason": "why it's harmful, 1-2 sentences",
-      "source": "named source if applicable"
-    }
-  ],
-  "beneficialAttributes": [
-    {
-      "attribute": "string",
-      "why": "1 sentence",
-      "source": "named cert/source"
-    }
-  ],
-  "sources": [
-    { "name": "string", "description": "string", "url": "string or empty" }
-  ],
-  "breakdown": {
-    "deductions": [ { "item": "string", "points": negative_integer } ],
-    "additions": [ { "item": "string", "points": positive_integer } ]
-  },
-  "uiSummary": {
-    "topAttributes": [
-      { "label": "Flour quality | Oil quality | Water source | etc.", "value": "concise value", "verdict": "good|warn|bad" }
-    ]
-  }
-}`;
-
 function hashUrl(u) {
   return crypto.createHash('sha1').update(u).digest('hex').slice(0, 16);
-}
-
-async function fetchAsDataUrl(url, maxBytes = 8 * 1024 * 1024) {
-  if (!url) return null;
-  try {
-    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!r.ok) return null;
-    const buf = Buffer.from(await r.arrayBuffer());
-    if (buf.length > maxBytes) return null;
-    let ct = (r.headers.get('content-type') || 'image/jpeg').toLowerCase();
-    if (!/^image\/(png|jpeg|jpg|webp|gif)/.test(ct)) ct = 'image/jpeg';
-    return `data:${ct};base64,${buf.toString('base64')}`;
-  } catch { return null; }
 }
 
 async function readCache(id) {
@@ -125,11 +45,11 @@ async function saveCache(id, payload) {
 module.exports = async function handler(req, res) {
   if (!(await guard(req, res, { perMinute: 6, dailyKey: 'analyze-product', dailyMax: 200 }))) return;
   if (req.method !== 'POST') return bad(res, 405, 'POST only');
-  if (!OPENAI_API_KEY) return bad(res, 500, 'OPENAI_API_KEY not configured');
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const imageUrl = String(body.imageUrl || '').trim();
+    const ocrText = String(body.ocrText || '').trim().slice(0, 4000);
     const refresh = !!body.refresh;
     if (!imageUrl) return bad(res, 400, 'imageUrl required');
     if (imageUrl.length > 1000) return bad(res, 400, 'imageUrl too long');
@@ -140,43 +60,52 @@ module.exports = async function handler(req, res) {
       if (cached) return res.status(200).json({ ...cached, cached: true });
     }
 
-    const dataUrl = await fetchAsDataUrl(imageUrl);
-    if (!dataUrl) return bad(res, 400, 'could not fetch image');
-
-    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        response_format: { type: 'json_object' },
-        temperature: 0.3,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: [
-            { type: 'text', text: 'Analyze the product visible in this image. Be ruthless. Return strict JSON per the schema.' },
-            { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } }
-          ] }
-        ]
-      })
-    });
-    if (!aiRes.ok) {
-      const t = await aiRes.text();
-      return bad(res, 502, `OpenAI ${aiRes.status}: ${t.slice(0, 240)}`);
+    // DB-only: every product analysis comes from the curated huge_dataset
+    // catalog. No GPT fallback, no fabricated data.
+    let item = null;
+    if (ocrText) {
+      try { item = await dbLookup.findItem(ocrText); }
+      catch (e) { console.warn('[analyze-product] db lookup failed:', e.message); }
     }
-    const j = await aiRes.json();
-    const content = j.choices?.[0]?.message?.content || '{}';
-    let analysis;
-    try { analysis = JSON.parse(content); }
-    catch { return bad(res, 502, 'AI response was not valid JSON'); }
 
-    const payload = {
+    if (item) {
+      const analysis = dbLookup.buildAnalysisFromItem(item);
+      const payload = {
+        id,
+        // Prefer the Supabase-hosted mirrored image (no CORS, edge-cached)
+        // over the third-party live-oasis.com URLs.
+        imageUrl: item.mirrored_image || item.transparent_image || item.image || imageUrl,
+        originalImageUrl: imageUrl,
+        analysis,
+        generatedAt: new Date().toISOString(),
+        source: 'huge_dataset',
+        matchedItemId: item.id,
+        matchedName: item.name,
+        matchedScore: item._matchScore
+      };
+      await saveCache(id, payload);
+      return res.status(200).json(payload);
+    }
+
+    // No match in the curated catalog. Return a structured payload the UI
+    // can render as "Couldn't find this product yet — try a clearer label
+    // photo, or this brand isn't in our database."
+    const noMatchPayload = {
       id,
       imageUrl,
-      analysis,
-      generatedAt: new Date().toISOString()
+      originalImageUrl: imageUrl,
+      analysis: null,
+      generatedAt: new Date().toISOString(),
+      source: 'no_match',
+      reason: ocrText
+        ? 'No product in the Purely database matched the label text we read.'
+        : 'No label text could be read from the photo. Try a clearer shot.',
+      ocrText: ocrText || ''
     };
-    await saveCache(id, payload);
-    return res.status(200).json(payload);
+    // Cache no-match results too so re-uploading the same photo doesn't
+    // re-run OCR and DB lookup.
+    await saveCache(id, noMatchPayload);
+    return res.status(200).json(noMatchPayload);
   } catch (e) {
     return bad(res, 500, e.message || 'Failed');
   }

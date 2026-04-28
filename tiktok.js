@@ -119,7 +119,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="ing-hdr-center">
-            <img src="${PURELY_LOGO_PATH}" alt="" class="ing-logo">
+            <img src="${PURELY_LOGO_PATH}" alt="" class="ing-logo" width="24" height="24" style="width:24px;height:24px;object-fit:contain;flex:0 0 auto">
             <span class="ing-wordmark">Purely App</span>
           </div>
           <button class="ing-hdr-btn" aria-label="Info">
@@ -413,6 +413,9 @@
       imageUrl, harmCount = 0, benCount = 0,
       microplastics = 'Unknown', microplasticsDetail = null, findings = [],
       category = '', packaging = '', otherMetrics = [],
+      // New fields from the curated DB lookup (null/empty when from GPT path).
+      allIngredients = null, company = null, brandInfo = null,
+      servingSize = '', alternatives = [], nutrients = [],
       filename = 'purely-product.png'
     } = opts;
     const safeScore = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
@@ -536,6 +539,118 @@
     const dotX = 51 + 46 * Math.cos(angleDeg * Math.PI / 180);
     const dotY = 51 + 46 * Math.sin(angleDeg * Math.PI / 180);
 
+    /* ---------- New DB-driven sections (mirror the mobile app) ---------- */
+
+    // "Owned by" row — parent-company logo + name (e.g. Costco for Kirkland).
+    const ownedByHtml = company && company.name ? `
+      <div class="pa-owned">
+        <span class="pa-owned-lbl">Owned by</span>
+        <span class="pa-owned-right">
+          ${company.logo ? `<img src="${escapeHtml(proxied(company.logo))}" alt="" class="pa-owned-logo" crossorigin="anonymous">` : ''}
+          <span class="pa-owned-name">${escapeHtml(company.name)}</span>
+        </span>
+      </div>` : '';
+
+    // "What's inside" — every ingredient on file with the real DB description.
+    // Ordered: harmful first (severity desc), beneficial next (bonus desc),
+    // neutral last. Mirrors ScanResultContent's substance card list.
+    const ingsForList = Array.isArray(allIngredients) && allIngredients.length
+      ? [...allIngredients].sort((a, b) => {
+          const rank = (i) => i.status === 'harmful' ? 0 : i.status === 'beneficial' ? 1 : 2;
+          if (rank(a) !== rank(b)) return rank(a) - rank(b);
+          return (b.severity_score || 0) + (b.bonus_score || 0) - (a.severity_score || 0) - (a.bonus_score || 0);
+        })
+      : null;
+    const insideListHtml = ingsForList && ingsForList.length
+      ? ingsForList.map((i) => `
+          <div class="pa-inside-card ${i.status === 'harmful' ? 'bad' : i.status === 'beneficial' ? 'good' : 'neutral'}">
+            <div class="pa-inside-name">${escapeHtml((i.name || '').slice(0, 80))}</div>
+            <div class="pa-inside-desc">${escapeHtml(String(i.description || '').slice(0, 260))}</div>
+          </div>`).join('')
+      // Fallback to legacy findings-driven list when DB had no match.
+      : (findings.length ? findings.map((f, idx) => {
+          const stat = f.kind === 'bad' ? 'bad' : f.kind === 'good' ? 'good' : 'neutral';
+          const desc = f.body || (stat === 'bad' ? 'Flagged for review based on third-party testing.'
+                                : stat === 'good' ? 'Generally regarded as safe and beneficial at typical levels.'
+                                : 'Common ingredient with no notable concerns.');
+          return `
+            <div class="pa-inside-card ${stat}" data-finding-idx="${idx}">
+              <div class="pa-inside-name">${escapeHtml((f.name || '').slice(0, 60))}</div>
+              <div class="pa-inside-desc">${escapeHtml(String(desc).slice(0, 220))}</div>
+            </div>`;
+        }).join('') : '');
+
+    // "Other info" card — packaging is the only field the mobile app surfaces
+    // here right now. We extend if more data ships from the DB later.
+    const otherInfoCardHtml = packaging ? `
+      <div class="pa-section">
+        <h3 class="pa-section-title">Other info</h3>
+        <div class="pa-info-card">
+          <div class="pa-info-key">Packaging</div>
+          <div class="pa-info-val">${escapeHtml(String(packaging).replace(/\b\w/g, (c) => c.toUpperCase()))}</div>
+        </div>
+      </div>` : '';
+
+    // FDA Daily Values — used to render the %DV bars on the Nutrition Facts panel.
+    const DV = {
+      'Calories': { dv: 2000, unit: 'kcal' }, 'Total Fat': { dv: 78, unit: 'g' },
+      'Saturated Fat': { dv: 20, unit: 'g' }, 'Cholesterol': { dv: 300, unit: 'mg' },
+      'Sodium': { dv: 2300, unit: 'mg' }, 'Total Carbohydrates': { dv: 275, unit: 'g' },
+      'Dietary Fiber': { dv: 28, unit: 'g' }, 'Added Sugars': { dv: 50, unit: 'g' },
+      'Protein': { dv: 50, unit: 'g' }, 'Vitamin D': { dv: 20, unit: 'mcg' },
+      'Calcium': { dv: 1300, unit: 'mg' }, 'Iron': { dv: 18, unit: 'mg' },
+      'Potassium': { dv: 4700, unit: 'mg' }
+    };
+    const NUT_ORDER = ['Calories','Total Fat','Saturated Fat','Trans Fat','Cholesterol','Sodium',
+      'Total Carbohydrates','Dietary Fiber','Total Sugars','Added Sugars','Protein',
+      'Vitamin D','Calcium','Iron','Potassium'];
+    const nutByName = new Map((nutrients || []).map((n) => [n.name, n]));
+    const nutritionRows = NUT_ORDER
+      .map((nm) => nutByName.get(nm))
+      .filter((n) => n && Number.isFinite(Number(n.amount)));
+    const nutritionHtml = nutritionRows.length ? `
+      <div class="pa-section">
+        <h3 class="pa-section-title">Nutrition Facts</h3>
+        <div class="pa-nut-card">
+          ${servingSize ? `<div class="pa-nut-serving">Serving size ${escapeHtml(servingSize)}</div>` : ''}
+          ${nutritionRows.map((n) => {
+            const ref = DV[n.name];
+            const unit = n.unit || ref?.unit || '';
+            const amt = Number(n.amount);
+            const pct = ref && amt > 0 ? Math.round((amt / ref.dv) * 100) : null;
+            const pctClamped = pct == null ? 0 : Math.max(0, Math.min(100, pct));
+            return `
+              <div class="pa-nut-row">
+                <div class="pa-nut-row-top">
+                  <span class="pa-nut-name">${escapeHtml(n.name)}</span>
+                  <span class="pa-nut-amt">${amt}${unit}</span>
+                </div>
+                ${pct != null ? `
+                  <div class="pa-nut-row-bot">
+                    <div class="pa-nut-bar"><div class="pa-nut-bar-fill" style="width:${pctClamped}%"></div></div>
+                    <span class="pa-nut-pct">${pct}%</span>
+                  </div>` : ''}
+              </div>`;
+          }).join('')}
+        </div>
+      </div>` : '';
+
+    // "Top rated [category]" carousel — same-type items with higher scores.
+    const altsHtml = Array.isArray(alternatives) && alternatives.length ? `
+      <div class="pa-section">
+        <h3 class="pa-section-title">Top rated ${escapeHtml(titleCaseCategory.toLowerCase())}</h3>
+        <div class="pa-alt-row">
+          ${alternatives.slice(0, 6).map((alt) => `
+            <div class="pa-alt-card">
+              <div class="pa-alt-img">${alt.image
+                ? `<img src="${escapeHtml(proxied(alt.image))}" alt="" crossorigin="anonymous">`
+                : ''}</div>
+              <div class="pa-alt-name">${escapeHtml((alt.name || '').slice(0, 50))}</div>
+              <div class="pa-alt-score">${alt.score}/100</div>
+            </div>`).join('')}
+        </div>
+      </div>` : '';
+
     clearTile(tile);
     tile.insertAdjacentHTML('beforeend', `
       <div class="app-screen pa-screen">
@@ -553,7 +668,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="pa-hdr-pill">
-            <img src="${PURELY_LOGO_PATH}" alt="" class="pa-hdr-logo">
+            <img src="${PURELY_LOGO_PATH}" alt="" class="pa-hdr-logo" width="24" height="24" style="width:24px;height:24px;object-fit:contain;flex:0 0 auto">
             <span class="pa-hdr-text">Purely App</span>
           </div>
           <button class="pa-hdr-icon" aria-label="View">${PA_EYE}</button>
@@ -600,35 +715,29 @@
 
         <div class="pa-foot">
           <span class="pa-foot-by">Scored by</span>
-          <img src="${PURELY_LOGO_PATH}" alt="" class="pa-foot-logo">
+          <img src="${PURELY_LOGO_PATH}" alt="" class="pa-foot-logo" width="20" height="20" style="width:20px;height:20px;object-fit:contain;flex:0 0 auto">
           <strong class="pa-foot-name">Purely</strong>
         </div>
 
-        ${findings.length ? `
+        ${ownedByHtml}
+
+        ${insideListHtml ? `
           <div class="pa-inside">
             <div class="pa-inside-hd">
               <h3 class="pa-inside-title">What's inside</h3>
               <span class="pa-inside-pill">
-                <img src="${PURELY_LOGO_PATH}" alt="" class="pa-inside-pill-logo">
+                <img src="${PURELY_LOGO_PATH}" alt="" class="pa-inside-pill-logo" width="16" height="16" style="width:16px;height:16px;object-fit:contain;flex:0 0 auto">
                 <span>Purely App</span>
               </span>
             </div>
-            <div class="pa-inside-list">
-              ${findings.map((f, idx) => {
-                const stat = f.kind === 'bad' ? 'bad' : f.kind === 'good' ? 'good' : 'neutral';
-                const desc = f.body || (stat === 'bad'
-                  ? 'Flagged for review based on third-party testing.'
-                  : stat === 'good'
-                    ? 'Generally regarded as safe and beneficial at typical levels.'
-                    : 'Common ingredient with no notable concerns.');
-                return `
-                  <div class="pa-inside-card ${stat}" data-finding-idx="${idx}">
-                    <div class="pa-inside-name">${escapeHtml((f.name || '').slice(0, 60))}</div>
-                    <div class="pa-inside-desc">${escapeHtml(String(desc).slice(0, 220))}</div>
-                  </div>`;
-              }).join('')}
-            </div>
+            <div class="pa-inside-list">${insideListHtml}</div>
           </div>` : ''}
+
+        ${otherInfoCardHtml}
+
+        ${nutritionHtml}
+
+        ${altsHtml}
       </div>
       ${makeDownloadBtn(filename)}
       ${makeExpandBtn()}
@@ -804,8 +913,18 @@
       microplastics: a.microplastics?.status || 'Unknown',
       microplasticsDetail: a.microplastics || null,
       category: p.subcategory || p.category || 'Other',
-      packaging: a.packaging?.material || p.package_color ? `${p.package_color} container` : '',
-      findings: dedupedFindings, filename: `purely-${safeName}.png`
+      packaging: a.packagingMaterial || a.packaging?.material || (p.package_color ? `${p.package_color} container` : ''),
+      findings: dedupedFindings,
+      // Rich DB-sourced data for the new sections (Owned by, What's inside,
+      // Nutrition Facts, Top rated). Falls back to undefined when the result
+      // came from GPT instead of huge_dataset.
+      allIngredients: a.allIngredients || null,
+      company:        a.company        || null,
+      brandInfo:      a.brandInfo      || null,
+      servingSize:    a.servingSize    || '',
+      alternatives:   a.alternatives   || [],
+      nutrients:      a.nutrients      || [],
+      filename: `purely-${safeName}.png`
     });
   }
 
@@ -922,7 +1041,7 @@
 
   // ----- shared bits used by the new "Purely App"-branded screens -----
   const PURELY_LOGO_URL = '/assets/purely-logo.png?v=3';
-  const PINWHEEL_HTML = `<span class="pinwheel"><img src="${PURELY_LOGO_URL}" alt=""></span>`;
+  const PINWHEEL_HTML = `<span class="pinwheel" style="width:28px;height:28px;border-radius:8px;background:#FFF;display:grid;place-items:center;flex:0 0 auto"><img src="${PURELY_LOGO_URL}" alt="" width="18" height="18" style="width:18px;height:18px;object-fit:contain;flex:0 0 auto"></span>`;
   const PURELY_HEADER = (rightHtml) => `
     <div class="purely-header">
       <button class="hdr-pill icon-only" aria-label="Back">
@@ -1716,6 +1835,64 @@
 
   ppGo.addEventListener('click', () => analyzePhoto());
 
+  // --- Free, in-browser OCR via Tesseract.js (CDN, pre-warmed on page load) ---
+  // The script + WASM + English language model are ~10MB combined and take
+  // 2-3s to download. We kick that off in idle time so by the time the user
+  // submits a photo, the worker is already initialized and recognize() takes
+  // ~1s instead of ~4s.
+  let _tesseractPromise = null;
+  function ensureTesseract() {
+    if (window.Tesseract) return Promise.resolve(window.Tesseract);
+    if (_tesseractPromise) return _tesseractPromise;
+    _tesseractPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+      s.onload = () => resolve(window.Tesseract);
+      s.onerror = () => reject(new Error('Tesseract CDN load failed'));
+      document.head.appendChild(s);
+    });
+    return _tesseractPromise;
+  }
+
+  let _workerPromise = null;
+  function getOcrWorker() {
+    if (_workerPromise) return _workerPromise;
+    _workerPromise = (async () => {
+      const T = await ensureTesseract();
+      // createWorker loads core + downloads `eng.traineddata` once; subsequent
+      // recognize() calls reuse the worker.
+      return T.createWorker('eng');
+    })();
+    return _workerPromise;
+  }
+
+  // Kick off pre-warm as soon as the page is idle. Failures are silent —
+  // ocrFile() will surface them when the user actually submits a photo.
+  function prewarmOcr() { getOcrWorker().catch(() => { _workerPromise = null; }); }
+  if ('requestIdleCallback' in window) requestIdleCallback(prewarmOcr, { timeout: 3000 });
+  else setTimeout(prewarmOcr, 1200);
+
+  async function ocrFile(file) {
+    try {
+      const worker = await getOcrWorker();
+      // Fake-tick the progress bar so the UI doesn't feel frozen during OCR.
+      let pct = 20;
+      const ticker = setInterval(() => {
+        pct = Math.min(pct + 2, 44);
+        setProgress(pct, `<strong>Reading label</strong> — ${pct - 20}/25`);
+      }, 200);
+      try {
+        const { data } = await worker.recognize(file);
+        return (data?.text || '').trim();
+      } finally {
+        clearInterval(ticker);
+      }
+    } catch (e) {
+      console.warn('[ocr] failed:', e && e.message);
+      return '';
+    }
+  }
+
   async function analyzePhoto() {
     if (!pickedFile) return;
     hideError();
@@ -1752,16 +1929,24 @@
       return;
     }
     setStep('scrape', 'done');
-    setStep('transcribe', 'done');
-    setProgress(35, '<strong>Analyzing</strong> with Purely\'s ruthless rubric…');
 
-    // 3. Analyze
+    // 2b. OCR the label locally (free, no API key) so the server can match a
+    // real product in the Purely DB before paying for a GPT vision call.
+    setStep('transcribe', 'active');
+    setProgress(20, '<strong>Reading label</strong> with on-device OCR…');
+    const ocrText = await ocrFile(pickedFile);
+    setStep('transcribe', 'done');
+    setProgress(45, ocrText
+      ? `<strong>Matching</strong> against 430k Purely products…`
+      : `<strong>Analyzing</strong> with Purely's ruthless rubric…`);
+
+    // 3. Analyze (DB-only — no GPT fallback)
     let payload;
     try {
       const r = await fetch('/api/analyze-product', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl, refresh: forceRefresh })
+        body: JSON.stringify({ imageUrl, ocrText, refresh: forceRefresh })
       });
       payload = await r.json();
       if (!r.ok) throw new Error(payload.error || 'analysis failed');
@@ -1771,16 +1956,41 @@
       return;
     }
     setStep('extract', 'done');
-    setProgress(60, `<strong>Score: ${payload.analysis?.score ?? '?'} / 100</strong> · generating Purely screens…`);
-    renderProductResult(payload, imageUrl);
+
+    // No DB match → show a clear "not in our database" message instead of
+    // fabricating an analysis with GPT.
+    if (payload.source === 'no_match' || !payload.analysis) {
+      progress.hidden = true;
+      ppGo.disabled = false; ppGo.classList.remove('busy');
+      const reason = payload.reason || "We couldn't match this product in the Purely database.";
+      const ocrLine = payload.ocrText
+        ? `<div style="margin-top:8px;font-size:12px;color:#9B958D;font-style:italic">Read from label: "${escapeHtml(String(payload.ocrText).slice(0, 200).replace(/\s+/g, ' ').trim())}"</div>`
+        : '';
+      results.hidden = false;
+      results.innerHTML = `
+        <div class="product-result no-match">
+          <div class="pr-photo" style="margin:0 auto 18px;max-width:320px"><img src="${escapeHtml(imageUrl)}" alt="" style="width:100%;border-radius:14px"/></div>
+          <h2 style="text-align:center;margin:0 0 8px;font-size:22px">Not in our database — yet</h2>
+          <p style="text-align:center;color:#6B6762;max-width:520px;margin:0 auto;line-height:1.5">${escapeHtml(reason)} The Purely catalog covers 430,000+ products but doesn't have this one yet. Try a clearer photo of the label, or scan a different product.</p>
+          ${ocrLine}
+        </div>`;
+      return;
+    }
+
+    setProgress(60, `<strong>Score: ${payload.analysis?.score ?? '?'} / 100</strong> · matched <em>${escapeHtml(payload.matchedName || '')}</em> · rendering Purely screens…`);
+
+    // Prefer the real product image from the DB when we matched a known item.
+    const displayImage = payload.imageUrl || imageUrl;
+
+    renderProductResult(payload, displayImage);
     setStep('images', 'active');
 
     // 4. Render one big Toxin Report screen — scrollable on the page,
     //    captured as a full-content PNG when downloaded.
     const tile = document.querySelector('.pr-mockups .mockup[data-screen="report"]');
-    if (tile) renderPhotoScreen(tile, payload, imageUrl);
+    if (tile) renderPhotoScreen(tile, payload, displayImage);
     setStep('images', 'done');
-    setProgress(100, '<strong>Done</strong> — Toxin Report rendered. Hover to download.');
+    setProgress(100, `<strong>Done</strong> — rendered from Purely DB.`);
   }
 
   function dotColor(verdict) {

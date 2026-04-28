@@ -1880,13 +1880,25 @@ body.ing-modal-open{overflow:hidden}
   display:inline-block;flex-shrink:0;
   vertical-align:middle;
 }
-/* Defensive: make sure no global img reset hides the Purely logo */
+/* Defensive: make sure no global img reset hides OR expands the Purely logo.
+ * Without !important, the broad `.mockup .app-screen img { width:auto }`
+ * rule earlier in the file can win the cascade in tile rendering and the
+ * logo blows up to its natural ~256px PNG size. */
 .pa-screen img.pa-hdr-logo,
 .pa-screen img.pa-foot-logo,
-.pa-screen img.pa-inside-pill-logo{
+.pa-screen img.pa-inside-pill-logo,
+.pa-screen .pinwheel img,
+.ing-modal img.ing-logo{
   visibility:visible;opacity:1;
   background:transparent;
+  object-fit:contain !important;
 }
+.pa-screen img.pa-hdr-logo        { width:24px !important; height:24px !important; }
+.pa-screen img.pa-foot-logo       { width:20px !important; height:20px !important; }
+.pa-screen img.pa-inside-pill-logo{ width:14px !important; height:14px !important; }
+.pa-screen .pinwheel              { width:28px !important; height:28px !important; }
+.pa-screen .pinwheel img          { width:18px !important; height:18px !important; }
+.ing-modal  img.ing-logo          { width:24px !important; height:24px !important; }
 .pa-foot-name{color:#1F1D1A;font-weight:700;font-size:15px;letter-spacing:-.005em}
 
 /* Inside the iPhone-shaped mockup tile, the screen scrolls naturally and
@@ -2027,3 +2039,119 @@ body.pa-fs-open{overflow:hidden}
   .pa-fs-status{padding-top:max(14px, env(safe-area-inset-top))}
   .pa-fs-close{top:max(14px, env(safe-area-inset-top));right:14px}
 }
+
+/* ============================================================
+ *  DB-driven sections that mirror the mobile ScanResultContent:
+ *  Owned by row, Other info card, Nutrition Facts panel, Top
+ *  rated alternatives carousel.
+ * ============================================================ */
+
+/* "Owned by [logo] [Company Name]" — sits between the Scored-by-Purely
+   footer and the What's inside section. Matches ScanResultContent.tsx
+   ownedByRow styles. */
+.pa-owned{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;background:#FFF;
+  border-top:1px solid #E3E0DA;border-bottom:1px solid #E3E0DA;
+  font-size:14px;color:#1F1D1A;
+}
+.pa-owned-lbl{color:#6B6762;font-weight:500}
+.pa-owned-right{display:flex;align-items:center;gap:8px;min-width:0}
+.pa-owned-logo{
+  width:auto;height:22px;max-width:90px;object-fit:contain;display:block;
+  flex:0 0 auto;
+}
+.pa-owned-name{
+  font-weight:600;color:#1F1D1A;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:160px;
+}
+
+/* Generic section wrapper used by Other info / Nutrition Facts / Top rated. */
+.pa-screen .pa-section{
+  background:#fff;
+  padding:18px 20px 22px;
+  border-top:1px solid #E3E0DA;
+  display:flex;flex-direction:column;gap:12px;
+}
+.pa-screen .pa-section-title{
+  font-size:18px;font-weight:700;color:#1F1D1A;
+  letter-spacing:-.01em;margin:0;
+}
+
+/* "Other info" — single-row label/value card. */
+.pa-info-card{
+  background:#fff;border:1.5px solid #E3E0DA;border-radius:14px;
+  padding:14px 18px;display:flex;flex-direction:column;gap:4px;
+}
+.pa-info-key{font-size:12px;font-weight:500;color:#6B6762}
+.pa-info-val{font-size:16px;font-weight:600;color:#1F1D1A;letter-spacing:-.005em}
+
+/* Nutrition Facts panel — FDA-style with %DV bars, mirrors NutritionFacts. */
+.pa-nut-card{
+  background:#fff;border:1.5px solid #E3E0DA;border-radius:14px;
+  padding:8px 16px;
+}
+.pa-nut-serving{
+  font-size:13px;color:#9B958D;font-weight:500;
+  padding:8px 0;border-bottom:1px solid #F0EEE9;
+}
+.pa-nut-row{padding:10px 0;border-bottom:1px solid #F0EEE9}
+.pa-nut-row:last-child{border-bottom:0}
+.pa-nut-row-top{
+  display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+}
+.pa-nut-name{font-size:15px;font-weight:600;color:#1F1D1A}
+.pa-nut-amt{font-size:14px;font-weight:500;color:#1F1D1A;font-variant-numeric:tabular-nums}
+.pa-nut-row-bot{
+  display:flex;align-items:center;gap:10px;margin-top:6px;
+}
+.pa-nut-bar{
+  flex:1;height:5px;border-radius:99px;background:#F0EEE9;overflow:hidden;
+}
+.pa-nut-bar-fill{
+  height:100%;background:#1F1D1A;border-radius:99px;
+}
+.pa-nut-pct{
+  font-size:12px;color:#6B6762;font-weight:500;font-variant-numeric:tabular-nums;
+  min-width:32px;text-align:right;
+}
+
+/* "Top rated [category]" — horizontal-scroll carousel of alternative items. */
+.pa-alt-row{
+  display:flex;gap:10px;overflow-x:auto;
+  margin:0 -20px;padding:4px 20px 8px;
+  scrollbar-width:none;
+}
+.pa-alt-row::-webkit-scrollbar{display:none}
+.pa-alt-card{
+  flex:0 0 auto;width:118px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.pa-alt-img{
+  width:118px;height:118px;border-radius:14px;
+  background:linear-gradient(135deg,#F0EEE9,#E3E0DA);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+.pa-alt-img img{
+  width:100%;height:100%;object-fit:contain;display:block;
+  background:#FFF;
+}
+.pa-alt-name{
+  font-size:12px;font-weight:600;color:#1F1D1A;
+  line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.pa-alt-score{
+  font-size:11px;color:#3F9A5D;font-weight:700;
+}
+
+/* Fullscreen-mode tweaks — slightly larger paddings for readability. */
+.pa-fs-screen .pa-section{padding:22px 24px 26px}
+.pa-fs-screen .pa-section-title{font-size:20px}
+.pa-fs-screen .pa-owned{padding:16px 24px}
+.pa-fs-screen .pa-nut-name{font-size:16px}
+.pa-fs-screen .pa-alt-card{width:140px}
+.pa-fs-screen .pa-alt-img{width:140px;height:140px}
