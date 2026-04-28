@@ -69,12 +69,16 @@ CRITICAL — distinguish brand from product name:
 - "Liquid Death Mountain Water" → brand: "Liquid Death", name: "Mountain Water". NEVER swap these.
 - If a product wordmark is stylized (gothic, blackletter, scripted), it's still the BRAND.
 
+CRITICAL — capture form-factor cues (these disambiguate SKUs within the same brand):
+- For BEVERAGES, NAME must include carbonation and water type when visible: "Sparkling Water", "Still Spring Water", "Mineral Water" — never just "Water". A "Mountain Valley" sparkling bottle and a "Mountain Valley" 5-gallon spring jug have the same brand but very different SKUs; the NAME is what tells them apart.
+- KEYWORDS must include the packaging form when visible — pick from: "glass", "plastic", "aluminum", "can", "bottle", "carton", "jug", "pouch", "tetra" — and the carbonation when visible: "sparkling", "still". These tokens drive the catalog search.
+
 Return this exact shape, nothing else:
 {
   "brand": "the BRAND name exactly as printed (largest wordmark)",
-  "name": "the product variant / flavor / size (NOT the brand)",
-  "type": "single word category: water, milk, yogurt, cereal, bar, supplement, soda, juice, snack, shampoo, cleaner, etc.",
-  "keywords": ["3-6 distinctive label words, lowercase, no stopwords, no brand"],
+  "name": "the product variant / flavor / size with form (NOT the brand). e.g. 'Sparkling Spring Water Glass Bottle', 'Diet Coke Can', 'Whole Milk Carton'",
+  "type": "single word category: water, sparkling_water, milk, yogurt, cereal, bar, supplement, soda, juice, snack, shampoo, cleaner, etc.",
+  "keywords": ["3-6 distinctive label words, lowercase, no stopwords, no brand. MUST include packaging form (glass/can/bottle/carton/jug) and carbonation (sparkling/still) when visible"],
   "barcode": "UPC/EAN digits if visible, else empty",
   "confidence": "high | medium | low"
 }`;
@@ -90,7 +94,12 @@ async function extractProductInfo(dataUrl) {
         { role: 'system', content: OCR_SYSTEM_PROMPT },
         { role: 'user', content: [
           { type: 'text', text: 'Read the product label and return the JSON.' },
-          { type: 'image_url', image_url: { url: dataUrl, detail: 'low' } }
+          // detail: 'high' — at 'low', OpenAI downsamples to 512px and the model
+          // hallucinates plausible-but-wrong product names when the label is
+          // unreadable (e.g. green-glass "Mountain Valley" misread as
+          // "Mountainside Farms milk carton"). High keeps the label legible
+          // for ~10x the cost (~$0.001/scan) — well within rate limits.
+          { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } }
         ] }
       ]
     })
@@ -154,7 +163,9 @@ module.exports = async function handler(req, res) {
         // Pass the OCR'd brand as a hint so the DB lookup tightens to that
         // brand first — prevents "Liquid Death Mountain Water" from matching
         // a Sparkling Ice product because both share token "punch"/"can".
-        item = await dbLookup.findItem(searchText, extracted.brand || '');
+        // The name hint anchors the within-brand SKU choice — "Sparkling Water"
+        // vs "Spring Water Gallon" share a brand but the name disambiguates.
+        item = await dbLookup.findItem(searchText, extracted.brand || '', extracted.name || '');
       } catch (e) { console.warn('[analyze-product] db lookup failed:', e.message); }
     }
 

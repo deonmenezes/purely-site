@@ -67,13 +67,14 @@ async function searchAnd(tokens, headers, brandHint) {
  * (e.g. "Kirkland Signature" OCR → only Kirkland products). Falls back to
  * a name-only search when the brand-scoped query yields nothing.
  */
-async function findItem(ocrText, brandHint) {
+async function findItem(ocrText, brandHint, nameHint) {
   if (!HUGE_URL || !HUGE_ANON) return null;
   const tokens = tokenize(ocrText);
   if (tokens.length === 0 && !brandHint) return null;
 
   const headers = { apikey: HUGE_ANON, Authorization: `Bearer ${HUGE_ANON}` };
   const brandLower = String(brandHint || '').toLowerCase().trim();
+  const nameLower  = String(nameHint  || '').toLowerCase().trim();
 
   // Sort longest-first — long words ("kirkland", "signature") are far more
   // selective than short ones ("oil", "tea").
@@ -118,9 +119,23 @@ async function findItem(ocrText, brandHint) {
         if (dbBrand === brandLower) s += 5;
         else if (dbBrand && (dbBrand.includes(brandLower) || brandLower.includes(dbBrand))) s += 3;
       }
-      const expected = tokens.length * 5;
-      const lenPenalty = Math.min(1, Math.abs(row.name.length - expected) / 60);
-      return { row, score: s - lenPenalty };
+      // Within-brand SKU anchor: the OCR'd `name` is the variant phrase
+      // ("Sparkling Spring Water Glass Bottle"). When that exact phrase (or
+      // its second half — strip the brand prefix) appears in the candidate
+      // name, this is the right SKU. Worth more than a single token hit.
+      if (nameLower && nameLower.length >= 4 && hay.includes(nameLower)) s += 4;
+      // Per-token name boost: each OCR-name word that hits the candidate
+      // name (not just brand_name) is a stronger signal than hitting brand.
+      if (nameLower) {
+        const nameTokens = nameLower.split(/\s+/).filter((t) => t.length >= 4);
+        const rowName = String(row.name || '').toLowerCase();
+        for (const t of nameTokens) if (rowName.includes(t)) s += 0.5;
+      }
+      // No length penalty — penalizing longer names systematically prefers
+      // less-specific SKUs (a 5-gallon "Mountain Valley Spring Water Gallon"
+      // would beat the more-specific "Mountain Valley Sparkling Water Glass
+      // Bottle" purely because its name is shorter).
+      return { row, score: s };
     })
     .sort((a, b) => b.score - a.score);
 
@@ -128,6 +143,21 @@ async function findItem(ocrText, brandHint) {
   if (!best || best.score < 2) return null;
 
   const row = best.row;
+
+  // Brand-consistency gate. If OCR returned a brand, the matched row's
+  // brand_name OR name must contain it (or vice versa, for cases where OCR
+  // returns a longer phrase than the canonical brand — e.g. "Sparkling Ice
+  // Caffeine" vs DB brand "Sparkling Ice"). Without this, a hallucinated OCR
+  // brand can land on an unrelated product whose name happens to share a
+  // single token. Returning null here lets the caller render a no_match
+  // payload — strictly better than confidently showing the wrong product.
+  if (brandLower) {
+    const dbBrand = String(row.brand_name || '').toLowerCase();
+    const dbName  = String(row.name || '').toLowerCase();
+    const fwd = dbBrand.includes(brandLower) || dbName.includes(brandLower);
+    const bwd = dbBrand && brandLower.includes(dbBrand);
+    if (!fwd && !bwd) return null;
+  }
 
   // In parallel: fetch ingredient details + DB-hosted mirrored image + the
   // raw items row (for brand_id/company_id/serving_size that items_full hides)
