@@ -1843,63 +1843,9 @@
 
   ppGo.addEventListener('click', () => analyzePhoto());
 
-  // --- Free, in-browser OCR via Tesseract.js (CDN, pre-warmed on page load) ---
-  // The script + WASM + English language model are ~10MB combined and take
-  // 2-3s to download. We kick that off in idle time so by the time the user
-  // submits a photo, the worker is already initialized and recognize() takes
-  // ~1s instead of ~4s.
-  let _tesseractPromise = null;
-  function ensureTesseract() {
-    if (window.Tesseract) return Promise.resolve(window.Tesseract);
-    if (_tesseractPromise) return _tesseractPromise;
-    _tesseractPromise = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-      s.onload = () => resolve(window.Tesseract);
-      s.onerror = () => reject(new Error('Tesseract CDN load failed'));
-      document.head.appendChild(s);
-    });
-    return _tesseractPromise;
-  }
-
-  let _workerPromise = null;
-  function getOcrWorker() {
-    if (_workerPromise) return _workerPromise;
-    _workerPromise = (async () => {
-      const T = await ensureTesseract();
-      // createWorker loads core + downloads `eng.traineddata` once; subsequent
-      // recognize() calls reuse the worker.
-      return T.createWorker('eng');
-    })();
-    return _workerPromise;
-  }
-
-  // Kick off pre-warm as soon as the page is idle. Failures are silent —
-  // ocrFile() will surface them when the user actually submits a photo.
-  function prewarmOcr() { getOcrWorker().catch(() => { _workerPromise = null; }); }
-  if ('requestIdleCallback' in window) requestIdleCallback(prewarmOcr, { timeout: 3000 });
-  else setTimeout(prewarmOcr, 1200);
-
-  async function ocrFile(file) {
-    try {
-      const worker = await getOcrWorker();
-      // Fake-tick the progress bar so the UI doesn't feel frozen during OCR.
-      let pct = 20;
-      const ticker = setInterval(() => {
-        pct = Math.min(pct + 2, 44);
-        setProgress(pct, `<strong>Reading label</strong> — ${pct - 20}/25`);
-      }, 200);
-      try {
-        const { data } = await worker.recognize(file);
-        return (data?.text || '').trim();
-      } finally {
-        clearInterval(ticker);
-      }
-    } catch (e) {
-      console.warn('[ocr] failed:', e && e.message);
-      return '';
-    }
-  }
+  // OCR is now done server-side via gpt-5-nano vision in /api/analyze-product.
+  // The client just uploads the photo and POSTs the imageUrl — no Tesseract,
+  // no client-side label reading.
 
   async function analyzePhoto() {
     if (!pickedFile) return;
@@ -1937,24 +1883,17 @@
       return;
     }
     setStep('scrape', 'done');
-
-    // 2b. OCR the label locally (free, no API key) so the server can match a
-    // real product in the Purely DB before paying for a GPT vision call.
     setStep('transcribe', 'active');
-    setProgress(20, '<strong>Reading label</strong> with on-device OCR…');
-    const ocrText = await ocrFile(pickedFile);
-    setStep('transcribe', 'done');
-    setProgress(45, ocrText
-      ? `<strong>Matching</strong> against 430k Purely products…`
-      : `<strong>Analyzing</strong> with Purely's ruthless rubric…`);
+    setProgress(30, '<strong>Reading label</strong> with gpt-5-nano vision…');
 
-    // 3. Analyze (DB-only — no GPT fallback)
+    // Server-side flow: gpt-5-nano OCRs the label, server searches the
+    // huge_dataset catalog, returns the matched product or a no_match payload.
     let payload;
     try {
       const r = await fetch('/api/analyze-product', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl, ocrText, refresh: forceRefresh })
+        body: JSON.stringify({ imageUrl, refresh: forceRefresh })
       });
       payload = await r.json();
       if (!r.ok) throw new Error(payload.error || 'analysis failed');
@@ -1971,9 +1910,13 @@
       progress.hidden = true;
       ppGo.disabled = false; ppGo.classList.remove('busy');
       const reason = payload.reason || "We couldn't match this product in the Purely database.";
-      const ocrLine = payload.ocrText
-        ? `<div style="margin-top:8px;font-size:12px;color:#9B958D;font-style:italic">Read from label: "${escapeHtml(String(payload.ocrText).slice(0, 200).replace(/\s+/g, ' ').trim())}"</div>`
-        : '';
+      const ex = payload.ocrExtracted || {};
+      const labelLine = (ex.brand || ex.name)
+        ? `<div style="margin-top:8px;font-size:12px;color:#9B958D;font-style:italic">Read from label: "${escapeHtml([ex.brand, ex.name].filter(Boolean).join(' — ').slice(0, 200))}"</div>`
+        : (payload.ocrText
+          ? `<div style="margin-top:8px;font-size:12px;color:#9B958D;font-style:italic">Read from label: "${escapeHtml(String(payload.ocrText).slice(0, 200).replace(/\s+/g, ' ').trim())}"</div>`
+          : '');
+      const ocrLine = labelLine;
       results.hidden = false;
       results.innerHTML = `
         <div class="product-result no-match">

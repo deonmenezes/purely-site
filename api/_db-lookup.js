@@ -393,4 +393,83 @@ function buildAnalysisFromItem(item) {
   };
 }
 
-module.exports = { findItem, buildAnalysisFromItem, tokenize };
+// Direct barcode lookup. When the OCR call returns a UPC/EAN we get a
+// deterministic match in one round trip. Falls back to the same enrichment
+// (ingredients + companies + brands + alternatives) used by findItem().
+async function findByBarcode(barcode) {
+  if (!HUGE_URL || !HUGE_ANON) return null;
+  const trimmed = String(barcode || '').trim();
+  if (!/^\d{8,14}$/.test(trimmed)) return null;
+  const headers = { apikey: HUGE_ANON, Authorization: `Bearer ${HUGE_ANON}` };
+  const url = `${HUGE_URL}/rest/v1/items_full?select=${COLS}&barcode=eq.${trimmed}&limit=1`;
+  let rows;
+  try { rows = await fetchJson(url, headers); }
+  catch { return null; }
+  if (!rows || rows.length === 0) return null;
+  const row = rows[0];
+
+  const ings = (row.data?.ingredients || []).filter((i) => i && i.ingredient_id);
+  const ingIds = Array.from(new Set(ings.map((i) => i.ingredient_id))).join(',');
+  const ingUrl = ingIds
+    ? `${HUGE_URL}/rest/v1/ingredients?id=in.(${ingIds})&select=id,name,legal_limit,health_guideline,measure,severity_score,bonus_score,is_contaminant,data`
+    : null;
+  const itemUrl = `${HUGE_URL}/rest/v1/items?id=eq.${row.id}&select=mirrored_image,mirror_status,brand_id,company_id,serving_size,serving_unit&limit=1`;
+  const altUrl  = `${HUGE_URL}/rest/v1/items?type=eq.${encodeURIComponent(row.type || '')}&score=gt.${row.score || 0}&id=neq.${row.id}&order=score.desc.nullslast&limit=8&select=id,name,score,type,mirrored_image,image,brand_id`;
+
+  const [ingDetails, itemRows, altRows] = await Promise.all([
+    ingUrl ? fetchJson(ingUrl, headers).catch(() => []) : Promise.resolve([]),
+    fetchJson(itemUrl, headers).catch(() => []),
+    row.type ? fetchJson(altUrl, headers).catch(() => []) : Promise.resolve([])
+  ]);
+
+  if (ings.length) {
+    const byId = new Map(ingDetails.map((d) => {
+      const blob = (d && d.data) || {};
+      return [d.id, {
+        ...d,
+        description: typeof blob.description === 'string' ? blob.description : '',
+        risks:       typeof blob.risks       === 'string' ? blob.risks       : '',
+        benefits:    typeof blob.benefits    === 'string' ? blob.benefits    : '',
+        sources:     Array.isArray(blob.sources) ? blob.sources : []
+      }];
+    }));
+    row._ingredientDetails = ings.map((i) => ({ ...i, details: byId.get(i.ingredient_id) || null }));
+  } else {
+    row._ingredientDetails = [];
+  }
+
+  const item0 = itemRows && itemRows[0];
+  if (item0) {
+    if (item0.mirror_status === 'done' && item0.mirrored_image) row.mirrored_image = item0.mirrored_image;
+    if (item0.brand_id) row.brand_id = item0.brand_id;
+    if (item0.company_id) row.company_id = item0.company_id;
+    if (item0.serving_size != null) row.serving_size = item0.serving_size;
+    if (item0.serving_unit) row.serving_unit = item0.serving_unit;
+  }
+
+  if (row.company_id || row.brand_id) {
+    const subFetches = [];
+    if (row.company_id) {
+      subFetches.push(
+        fetchJson(`${HUGE_URL}/rest/v1/companies?id=eq.${row.company_id}&select=id,name,image,wide_logo,mirrored_image&limit=1`, headers)
+          .then((rows) => { if (rows && rows[0]) row._company = rows[0]; })
+          .catch(() => {})
+      );
+    }
+    if (row.brand_id) {
+      subFetches.push(
+        fetchJson(`${HUGE_URL}/rest/v1/brands?id=eq.${row.brand_id}&select=id,name,image,mirrored_image&limit=1`, headers)
+          .then((rows) => { if (rows && rows[0]) row._brand = rows[0]; })
+          .catch(() => {})
+      );
+    }
+    await Promise.all(subFetches);
+  }
+
+  row._alternatives = Array.isArray(altRows) ? altRows : [];
+  row._matchScore = 99; // exact barcode hit
+  row._matchedTokens = ['barcode:' + trimmed];
+  return row;
+}
+
+module.exports = { findItem, findByBarcode, buildAnalysisFromItem, tokenize };
