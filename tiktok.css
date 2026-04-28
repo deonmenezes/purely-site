@@ -2163,3 +2163,78 @@ body.pa-fs-open{overflow:hidden}
 .pa-fs-screen .pa-nut-name{font-size:16px}
 .pa-fs-screen .pa-alt-card{width:140px}
 .pa-fs-screen .pa-alt-img{width:140px;height:140px}
+
+/* ============================================================
+ *  /tiktok photo flow — INTERACTIVE preview replaces the iPhone
+ *  mockup. Same .pa-screen content but rendered at full readable
+ *  size, no scale transform, native scroll, all clicks flow through.
+ * ============================================================ */
+.pr-section-sub{
+  font-size:14px;color:#6B6762;
+  margin:-4px 0 18px;line-height:1.5;
+}
+.pr-section-sub strong{color:#1F1D1A;font-weight:700}
+
+.pr-app-preview{
+  position:relative;
+  width:100%;max-width:480px;margin:0 auto;
+  background:#F7F5F0;
+  border-radius:32px;
+  box-shadow:0 24px 60px -24px rgba(31,29,26,.18), 0 4px 16px -8px rgba(31,29,26,.06);
+  overflow:hidden;
+  /* Override the legacy mockup container query — render at natural size */
+  container-type:normal;
+}
+/* Disable the iPhone scale transform so content is fully readable +
+   tappable. Adjusts every nested rule that assumed `.app-screen` was
+   scaled inside `.mockup`. */
+.pr-app-preview .app-screen{
+  transform:none !important;
+  position:relative !important;
+  inset:auto !important;
+  width:100% !important;
+  height:auto !important;
+  max-height:none !important;
+  border-radius:32px !important;
+  background:#F7F5F0;
+  font-family:'Inter','-apple-system','SF Pro Text','Segoe UI',sans-serif;
+}
+/* Hide the fake iPhone status bar (9:41, signal/battery) and notch.
+   No need to fake it — we're not pretending to be an iPhone anymore. */
+.pr-app-preview .pa-status{display:none}
+/* Push the header down a bit since the status bar is gone */
+.pr-app-preview .pa-hdr{padding-top:18px}
+
+/* The download button on .pr-app-preview floats above the rounded
+   container — same pill shape as on .mockup but always visible. */
+.pr-app-preview .dl-btn{
+  position:absolute;top:14px;right:14px;z-index:5;
+  height:36px;padding:0 14px 0 11px;border-radius:99px;
+  background:rgba(255,255,255,.96);color:var(--green-800);
+  border:0;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:700;letter-spacing:.01em;
+  box-shadow:0 6px 14px rgba(0,0,0,.18);
+  transition:background .15s, color .15s, transform .1s;
+}
+.pr-app-preview .dl-btn svg{width:15px;height:15px;flex:0 0 auto}
+.pr-app-preview .dl-btn:hover{background:var(--green-700);color:#fff}
+.pr-app-preview .dl-btn:active{transform:scale(.96)}
+.pr-app-preview .dl-btn.busy{background:var(--green-700);color:#fff;pointer-events:none}
+.pr-app-preview .dl-btn.busy svg{animation:spin 1s linear infinite}
+/* The legacy fullscreen-expand button has no purpose in the interactive
+   preview — every interaction works in place. */
+.pr-app-preview .fs-btn{display:none !important}
+
+@media (max-width:520px){
+  .pr-app-preview{border-radius:24px}
+  .pr-app-preview .dl-btn{height:32px;font-size:11px;padding:0 10px}
+  .pr-app-preview .dl-btn svg{width:13px;height:13px}
+}
+
+/* Ingredient-detail modal Save-PNG button — uses the same .ing-hdr-btn
+   shape; only difference is the busy spinner state. */
+.ing-hdr-btn.ing-dl-btn{transition:background .12s, color .12s, transform .1s}
+.ing-hdr-btn.ing-dl-btn:hover{background:#2f7a47;color:#fff}
+.ing-hdr-btn.ing-dl-btn.busy{background:#2f7a47;color:#fff;pointer-events:none}
+.ing-hdr-btn.ing-dl-btn.busy svg{animation:spin 1s linear infinite}

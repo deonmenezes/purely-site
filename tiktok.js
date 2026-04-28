@@ -122,8 +122,8 @@
             <img src="${PURELY_LOGO_PATH}" alt="" class="ing-logo" width="24" height="24" style="width:24px;height:24px;object-fit:contain;flex:0 0 auto">
             <span class="ing-wordmark">Purely App</span>
           </div>
-          <button class="ing-hdr-btn" aria-label="Info">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h0M12 11v5" stroke-linecap="round"/></svg>
+          <button class="ing-hdr-btn ing-dl-btn" aria-label="Save ingredient screen as PNG" title="Save as PNG">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
 
@@ -177,11 +177,34 @@
     document.body.classList.add('ing-modal-open');
 
     el.addEventListener('click', (e) => {
+      // Don't bubble Save-PNG click into close-on-backdrop
+      if (e.target.closest('.ing-dl-btn')) return;
       if (e.target === el || e.target.closest('[data-close]')) closeIngredientDetail();
     });
     el.querySelectorAll('.ing-accord-hd').forEach((btn) => {
       btn.addEventListener('click', () => btn.parentElement.classList.toggle('open'));
     });
+    // Save the ingredient detail screen as a clean PNG (no backdrop, no close
+    // chrome — just the .ing-screen content). Re-uses the same off-screen
+    // clone + html2canvas pipeline as the iPhone-mockup download.
+    const dlBtn = el.querySelector('.ing-dl-btn');
+    if (dlBtn) {
+      dlBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        dlBtn.classList.add('busy');
+        try {
+          const screen = el.querySelector('.ing-screen');
+          if (!screen) throw new Error('no screen to capture');
+          const safe = String(opts.name || 'ingredient').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          await downloadElement(screen, `purely-${safe}.png`);
+          showToast('Saved', 'ok');
+        } catch (err) {
+          showToast('Download failed: ' + (err.message || err), 'err');
+        } finally {
+          dlBtn.classList.remove('busy');
+        }
+      });
+    }
     document.addEventListener('keydown', _ingEsc);
   }
   function _ingEsc(e) { if (e.key === 'Escape') closeIngredientDetail(); }
@@ -351,18 +374,22 @@
     </button>`;
   }
   function attachExpand(tile) {
+    // Skip the auto-zoom handler for the photo flow's interactive preview —
+    // there clicks need to flow through to ingredient cards, scrolls inside
+    // the card need to work, etc. The .fs-btn is hidden via CSS in that case.
+    if (tile.classList.contains('pr-app-preview')) return;
+
     const btn = tile.querySelector('.fs-btn');
     if (!btn) return;
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       openFullScreenView(tile);
     });
-    // Tapping the screen itself (anywhere not a button) also expands
     const screen = tile.querySelector('.pa-screen');
     if (screen) {
       screen.style.cursor = 'zoom-in';
       screen.addEventListener('click', (e) => {
-        if (e.target.closest('.pa-stat-row')) return; // row clicks open detail modal
+        if (e.target.closest('.pa-stat-row')) return;
         if (e.target.closest('button')) return;
         openFullScreenView(tile);
       });
@@ -1403,6 +1430,12 @@
   async function downloadAppScreen(tile, filename) {
     const screen = tile.querySelector('.app-screen');
     if (!screen) throw new Error('no screen to capture');
+    return downloadElement(screen, filename);
+  }
+
+  // Generic "capture this DOM element as a high-res PNG" helper. Used by
+  // the iPhone-mockup download button AND the ingredient-detail modal Save.
+  async function downloadElement(screen, filename) {
     const h2c = await loadHtml2Canvas();
 
     // Wait for any inline images (proxied product photo) to finish loading
@@ -1937,9 +1970,9 @@
     renderProductResult(payload, displayImage);
     setStep('images', 'active');
 
-    // 4. Render one big Toxin Report screen — scrollable on the page,
-    //    captured as a full-content PNG when downloaded.
-    const tile = document.querySelector('.pr-mockups .mockup[data-screen="report"]');
+    // 4. Render the interactive preview — full-width, fully scrollable,
+    //    every ingredient card is clickable, no iPhone-bezel scale transform.
+    const tile = document.querySelector('.pr-app-preview[data-screen="report"]');
     if (tile) renderPhotoScreen(tile, payload, displayImage);
     setStep('images', 'done');
     setProgress(100, `<strong>Done</strong> — rendered from Purely DB.`);
@@ -2038,12 +2071,10 @@
         </div>
 
         <div class="pr-section">
-          <h3>Generated Purely screens</h3>
-          <div class="pr-mockups">
-            <div class="mockup" data-screen="report">
-              <span class="mockup-label">Toxin Report</span>
-              <div class="skel"></div>
-            </div>
+          <h3>Interactive preview</h3>
+          <p class="pr-section-sub">Scroll inside, tap any ingredient card to open its detail screen, or hit <strong>Save PNG</strong> to download.</p>
+          <div class="pr-app-preview" data-screen="report">
+            <div class="skel"></div>
           </div>
         </div>
 
