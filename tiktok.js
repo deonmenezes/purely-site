@@ -310,8 +310,9 @@
   }
 
   function makeDownloadBtn(filename) {
-    return `<button class="dl-btn" data-dl="${escapeHtml(filename)}" title="Download">
-      <svg viewBox="0 0 24 24"><path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+    return `<button class="dl-btn" data-dl="${escapeHtml(filename)}" title="Download iPhone screen as PNG">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+      <span class="dl-btn-lbl">Save PNG</span>
     </button>`;
   }
 
