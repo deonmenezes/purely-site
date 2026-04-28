@@ -697,7 +697,15 @@
           </div>
           <div class="pa-score" style="--ring:${ringColor}">
             <svg viewBox="0 0 102 102" class="pa-score-svg">
-              <circle cx="51" cy="51" r="46" stroke="#E3E0DA" stroke-width="6" fill="none"/>
+              <!-- Background track -->
+              <circle cx="51" cy="51" r="46" stroke="#E3E0DA" stroke-width="7" fill="none"/>
+              <!-- Filled progress arc — starts at 12 o'clock, sweeps clockwise. -->
+              <circle cx="51" cy="51" r="46" stroke="${ringColor}" stroke-width="7" fill="none"
+                      stroke-linecap="round"
+                      stroke-dasharray="289.03"
+                      stroke-dashoffset="${(289.03 * (1 - safeScore / 100)).toFixed(2)}"
+                      transform="rotate(-90 51 51)"/>
+              <!-- End-of-arc dot for the polished mobile-app look -->
               <circle cx="${dotX.toFixed(2)}" cy="${dotY.toFixed(2)}" r="5.5" fill="${ringColor}"/>
             </svg>
             <div class="pa-score-text">
