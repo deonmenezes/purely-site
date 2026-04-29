@@ -264,27 +264,34 @@ function buildAnalysisFromItem(item) {
   const meta = item.data?.metadata || {};
   const ings = item._ingredientDetails || [];
 
+  /* The per-product `data.ingredients[i]` blob doesn't always carry severity
+   * — the canonical scores live on the `ingredients` lookup table (joined in
+   * via i.details). Read from the embedded value first, fall back to the
+   * lookup table's value, otherwise zero. Same for bonus_score. */
+  const sevOf = (i) => Number(i.severity_score) || Number(i.details?.severity_score) || 0;
+  const bonOf = (i) => Number(i.bonus_score)    || Number(i.details?.bonus_score)    || 0;
+
   const harmful = ings
-    .filter((i) => (i.severity_score || 0) > 0 || (i.details?.is_contaminant === true))
-    .sort((a, b) => (b.severity_score || 0) - (a.severity_score || 0))
+    .filter((i) => sevOf(i) > 0 || (i.details?.is_contaminant === true))
+    .sort((a, b) => sevOf(b) - sevOf(a))
     .slice(0, 8)
     .map((i) => ({
       name: i.name || i.details?.name || 'Unknown ingredient',
       reason: i.details?.risks
         || i.details?.description
-        || `Flagged with severity score ${i.severity_score} in the Purely product database.`,
+        || `Flagged with severity score ${sevOf(i)} in the Purely product database.`,
       source: i.details?.is_contaminant ? 'Purely DB · contaminant' : 'Purely product database'
     }));
 
   const beneficial = ings
-    .filter((i) => (i.bonus_score || 0) > 0)
-    .sort((a, b) => (b.bonus_score || 0) - (a.bonus_score || 0))
+    .filter((i) => bonOf(i) > 0)
+    .sort((a, b) => bonOf(b) - bonOf(a))
     .slice(0, 8)
     .map((i) => ({
       attribute: i.name || i.details?.name || 'Unknown',
       why: i.details?.benefits
         || i.details?.description
-        || `Adds bonus ${i.bonus_score} for ingredient quality.`,
+        || `Adds bonus ${bonOf(i)} for ingredient quality.`,
       source: 'Purely product database'
     }));
 
@@ -375,11 +382,15 @@ function buildAnalysisFromItem(item) {
   // risks/benefits/legal limit/health guideline pulled from the ingredients
   // table). Score range mirrors the mobile app: harmful → negative, beneficial → positive.
   const allIngredients = ings.map((i) => {
-    const sev = Number(i.severity_score) || 0;
-    const bon = Number(i.bonus_score) || 0;
-    const status = sev >= 1 ? 'harmful' : bon >= 1 ? 'beneficial' : 'neutral';
     const detail = i.details || {};
-    const score = sev > 0 ? -sev : bon > 0 ? bon : 0;
+    /* Same fallback chain: per-product → ingredients-table → 0. Without
+     * this, every ingredient renders as score 0 in the "What's inside"
+     * cards because the embedded array often only has ingredient_id. */
+    const sev = Number(i.severity_score) || Number(detail.severity_score) || 0;
+    const bon = Number(i.bonus_score)    || Number(detail.bonus_score)    || 0;
+    const isContaminant = detail.is_contaminant === true;
+    const status = sev >= 1 || isContaminant ? 'harmful' : bon >= 1 ? 'beneficial' : 'neutral';
+    const score = sev > 0 ? -sev : bon > 0 ? bon : (isContaminant ? -3 : 0);
     return {
       name: i.name || detail.name || 'Ingredient',
       status,

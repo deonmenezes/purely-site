@@ -1,17 +1,22 @@
 /**
  * /analyze — product photo scanner.
  *
- * Flow:
+ * Pipeline:
  *   1. User picks a photo → signed-URL upload to Supabase
- *   2. POST /api/analyze-product with the public URL
- *   3. Server runs gpt-4o-mini OCR, looks the product up in huge_dataset,
- *      returns the curated DB row (real score, ingredients, nutrients,
- *      mirrored image) — no AI analysis, no fabricated data
- *   4. We render N distinct 9:16 "screens" (Score / Snapshot / Ingredients /
- *      per-ingredient deep-dive) — each one is a self-contained iPhone-style
- *      frame at fixed 9:16 aspect ratio
- *   5. Save buttons capture each frame separately via html2canvas → one PNG
- *      per frame. NO vertical slicing of one long page.
+ *   2. POST /api/analyze-product — gpt-4o-mini OCR reads the label, then
+ *      huge_dataset.items_full lookup returns the curated DB row (real score,
+ *      ingredients, severity_score, bonus_score, nutrients, alternatives,
+ *      mirrored image) — NO AI analysis, NO fabricated data
+ *   3. Live preview rendered by tiktok.js's renderToxinReport (same component
+ *      /tiktok uses) — shows EVERY DB field
+ *   4. Share gallery clones SECTIONS of that rendered preview into 9:16
+ *      frames, plus per-ingredient detail screens via the existing
+ *      buildIngredientScreenOffscreen (which already shows risks / benefits /
+ *      legal limit / health guideline / references / -5..5 ingredient score —
+ *      all straight from the ingredients table). Each frame downloads as one
+ *      PNG using html2canvas — no slicing of one long page.
+ *
+ * Every visible value: pulled from the database. Nothing hand-made.
  */
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
@@ -33,8 +38,6 @@
 
   let pickedFile = null;
   let forceRefresh = false;
-
-  const PURELY_LOGO_PATH = '/assets/purely-logo.png?v=3';
 
   /* ---------- Tiny utilities ---------- */
   function showToast(msg, type = '') {
@@ -59,10 +62,7 @@
     progFill.style.width = pct + '%';
     if (msg) progStatus.innerHTML = msg;
   }
-  function showError(msg) {
-    errBox.textContent = msg;
-    errBox.hidden = false;
-  }
+  function showError(msg) { errBox.textContent = msg; errBox.hidden = false; }
   function hideError() { errBox.hidden = true; errBox.textContent = ''; }
   function escapeHtml(s) {
     return String(s || '').replace(/[&<>"']/g, (c) =>
@@ -79,37 +79,6 @@
   }
   function proxied(u) {
     return u && /^https?:/i.test(u) ? `/api/img?u=${encodeURIComponent(u)}` : u;
-  }
-
-  /* ---------- Score color ramp (mirror of lib/scoreColor.ts) ---------- */
-  const SCORE_STOPS = [
-    { s: 0,   h: 0,   sat: 80, l: 48 },
-    { s: 25,  h: 12,  sat: 82, l: 52 },
-    { s: 50,  h: 38,  sat: 88, l: 52 },
-    { s: 70,  h: 80,  sat: 70, l: 45 },
-    { s: 85,  h: 130, sat: 65, l: 40 },
-    { s: 100, h: 145, sat: 72, l: 36 }
-  ];
-  function scoreColor(score) {
-    const c = Math.max(0, Math.min(100, Number(score) || 0));
-    for (let i = 0; i < SCORE_STOPS.length - 1; i++) {
-      const a = SCORE_STOPS[i], b = SCORE_STOPS[i + 1];
-      if (c >= a.s && c <= b.s) {
-        const t = (c - a.s) / (b.s - a.s || 1);
-        const h = a.h + (b.h - a.h) * t;
-        const sat = a.sat + (b.sat - a.sat) * t;
-        const l = a.l + (b.l - a.l) * t;
-        return `hsl(${h.toFixed(0)},${sat.toFixed(0)}%,${l.toFixed(0)}%)`;
-      }
-    }
-    return 'hsl(145,72%,36%)';
-  }
-  function scoreLabel(s) {
-    if (s >= 80) return 'Excellent';
-    if (s >= 65) return 'Good';
-    if (s >= 50) return 'Okay';
-    if (s >= 30) return 'Poor';
-    return 'Avoid';
   }
 
   /* ---------- Photo drop handlers ---------- */
@@ -174,7 +143,6 @@
       });
       const signJ = await sign.json();
       if (!sign.ok) throw new Error(signJ.error || 'upload sign failed');
-
       const put = await fetch(signJ.signedUrl, {
         method: 'PUT',
         headers: { 'Content-Type': pickedFile.type, 'x-upsert': 'true' },
@@ -221,7 +189,7 @@
     const displayImage = payload.imageUrl || imageUrl;
     renderResult(payload, displayImage);
     setStep('render', 'done');
-    setProgress(100, '<strong>Done</strong> — distinct shareable screens ready.');
+    setProgress(100, '<strong>Done</strong> — every value pulled from the Purely database.');
     ppGo.disabled = false; ppGo.classList.remove('busy');
   }
 
@@ -241,15 +209,15 @@
   }
 
   /* ============================================================
-   *  Build the result panel + N distinct 9:16 screens.
-   *  Each screen is captured separately as one PNG (no slicing).
+   *  Result panel: header + live preview + share gallery.
+   *  All visible data is the same payload the live preview reads.
    * ============================================================ */
   function renderResult(payload, imageUrl) {
     const a = payload.analysis || {};
     const p = a.product || {};
     const score = Math.max(0, Math.min(100, Math.round(Number(a.score) || 0)));
-    const ringColor = scoreColor(score);
-    const verdict = a.verdict || scoreLabel(score);
+    const verdict = a.verdict || (window.PurelyApp?.scoreLabel?.(score) || 'Okay');
+    const ringColor = window.PurelyApp?.scoreColor?.(score) || '#2F8A5B';
     const brand = p.brand || '';
     const name = p.name || 'Product';
     const matchedFrom = payload.matchedName || '';
@@ -259,34 +227,38 @@
     const benCount = a.beneficialCount ?? (a.beneficialAttributes?.length || 0);
     const mp = a.microplastics || {};
     const mpStatus = (typeof mp === 'string') ? mp : (mp.status || 'No data');
-    const mpDetected = /Detected|Likely|High/i.test(mpStatus);
 
-    /* Build a unified findings list (top concerns first). */
+    /* Build the same findings array tiktok.js's renderPhotoScreen builds —
+     * keeps the live preview's "Top concerns" list identical to /tiktok. */
     const findings = [];
     (a.contaminants || []).slice(0, 4).forEach((c) => findings.push({
       kind: 'bad', name: c.name,
-      val: c.amount || c.multiplier || c.status || 'Detected',
-      body: c.concern || ''
+      pill: c.multiplier || c.status || 'Detected',
+      amount: c.amount || null, limit: c.limit || null,
+      limitSource: c.limitSource || '', multiplier: c.multiplier || '',
+      body: c.concern || '', source: c.source || ''
     }));
     (a.harmfulIngredients || []).slice(0, 4).forEach((h) => findings.push({
-      kind: 'bad', name: h.name, val: 'Harmful', body: h.reason || ''
+      kind: 'bad', name: h.name, pill: 'Harmful',
+      body: h.reason || '', source: h.source || ''
     }));
     (a.beneficialAttributes || []).slice(0, 3).forEach((b) => findings.push({
-      kind: 'good', name: b.attribute, val: 'Beneficial', body: b.why || ''
+      kind: 'good', name: b.attribute, pill: 'Beneficial',
+      body: b.why || '', source: b.source || ''
     }));
-    if ((a.uiSummary?.topAttributes || []).length) {
-      a.uiSummary.topAttributes.slice(0, 4).forEach((t) => {
-        const verdict = String(t.verdict || '').toLowerCase();
-        const kind = /bad|harm/.test(verdict) ? 'bad' : /good|benef/.test(verdict) ? 'good' : 'neutral';
+    if (Array.isArray(a.uiSummary?.topAttributes) && a.uiSummary.topAttributes.length) {
+      a.uiSummary.topAttributes.slice(0, 6).forEach((t) => {
+        const v = String(t.verdict || '').toLowerCase();
+        const kind = /bad|harm/.test(v) ? 'bad' : /good|benef/.test(v) ? 'good' : 'neutral';
         findings.push({
-          kind,
-          name: t.label || t.value || 'Attribute',
-          val: t.value || '',
-          body: t.note || ''
+          kind, name: t.label || t.value || 'Attribute',
+          label: t.label || '', value: t.value || '',
+          body: t.value ? `${t.value}${t.note ? ` — ${t.note}` : ''}` : (t.note || ''),
+          pill: t.label || ''
         });
       });
     }
-    /* Dedup by name */
+    /* Dedupe by name — uiSummary often repeats names already in contaminants/harmful. */
     const seen = new Set();
     const dedup = findings.filter((f) => {
       const k = String(f.name || '').toLowerCase().trim();
@@ -294,27 +266,7 @@
       seen.add(k); return true;
     });
 
-    /* Ingredient list — prefer DB allIngredients, fall back to findings. */
-    const dbIngs = Array.isArray(a.allIngredients) ? [...a.allIngredients] : [];
-    dbIngs.sort((a, b) => {
-      const rank = (i) => i.status === 'harmful' ? 0 : i.status === 'beneficial' ? 1 : 2;
-      if (rank(a) !== rank(b)) return rank(a) - rank(b);
-      return (b.severity_score || 0) + (b.bonus_score || 0)
-           - (a.severity_score || 0) - (a.bonus_score || 0);
-    });
-
-    /* Pick up to 4 ingredients for deep-dive screens (most-impactful first). */
-    const deepDive = dbIngs.length
-      ? dbIngs.filter((i) => i.status === 'harmful' || i.status === 'beneficial').slice(0, 4)
-      : dedup.filter((f) => f.kind !== 'neutral').slice(0, 4).map((f) => ({
-          name: f.name,
-          description: f.body,
-          status: f.kind === 'bad' ? 'harmful' : 'beneficial',
-          score: f.kind === 'bad' ? -3 : 3
-        }));
-
-    /* ---------- Header block (above the screens) ---------- */
-    results.hidden = false;
+    /* ---------- Result HTML scaffold ---------- */
     const headHtml = `
       <div class="az-result-hd">
         <div class="photo"><img src="${escapeHtml(proxied(imageUrl))}" alt=""></div>
@@ -329,152 +281,80 @@
         </div>
       </div>`;
 
-    const toolbarHtml = `
-      <div class="az-screens-hd">
-        <div class="copy">
-          <h3>Shareable screens</h3>
-          <p>Each card below is a standalone 9:16 frame — drop one straight into a TikTok or Reel. Save individually with the icon, or grab them all at once.</p>
-        </div>
-        <button class="az-save-all" id="az-save-all" title="Download every screen as a separate PNG">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <span>Save all screens</span>
-        </button>
-      </div>`;
-
-    /* ---------- Frame markup ---------- */
-    const frames = [];
-
-    // Frame 1: Score / Hero
-    frames.push({
-      key: 'score',
-      filename: `purely-${slug}-score.png`,
-      label: 'Score',
-      html: frameScore({ name, brand, ringColor, score, verdict, imageUrl, mpDetected })
-    });
-
-    // Frame 2: Snapshot (stats + concerns)
-    frames.push({
-      key: 'snapshot',
-      filename: `purely-${slug}-snapshot.png`,
-      label: 'Snapshot',
-      html: frameSnapshot({ name, brand, ringColor, score, imageUrl, harmCount, benCount, mpStatus, findings: dedup })
-    });
-
-    // Frame 3: Ingredient list (top items, fits in 9:16)
-    if (dbIngs.length || dedup.length) {
-      frames.push({
-        key: 'inside',
-        filename: `purely-${slug}-inside.png`,
-        label: "What's inside",
-        html: frameInside({ name, brand, ringColor, score, imageUrl, ingredients: dbIngs.slice(0, 6).length ? dbIngs.slice(0, 6) : dedup.slice(0, 6).map(toFakeIng) })
-      });
-    }
-
-    // Frame 4..N: Per-ingredient deep dive
-    deepDive.forEach((ing, i) => {
-      const safeIng = safeSlug(ing.name);
-      frames.push({
-        key: `deep-${i}`,
-        filename: `purely-${slug}-${safeIng}.png`,
-        label: (ing.name || 'Ingredient').slice(0, 22),
-        html: frameDeepDive({ ing, productName: name, productScore: score })
-      });
-    });
-
-    const screensHtml = `
-      <div class="az-screens" id="az-screens">
-        ${frames.map((f, i) => `
-          <div class="az-frame" data-frame-key="${escapeHtml(f.key)}" data-filename="${escapeHtml(f.filename)}">
-            <div class="azf-controls">
-              <button class="azf-dl-btn" title="Save this screen as PNG" aria-label="Save screen">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                  <path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-            </div>
-            <div class="azf-label">${escapeHtml(f.label)}</div>
-            <div class="az-frame-inner">${f.html}</div>
-          </div>`).join('')}
-      </div>`;
-
-    /* Interactive iPhone preview — rendered by tiktok.js's renderToxinReport
-     * (the exact same component the /tiktok page uses). The .pr-app-preview
-     * class triggers the page-mode behavior in attachExpand: clicks on
-     * ingredient rows open the detail modal, the slice-based "Save PNG"
-     * button is hidden by analyze.css. */
     const previewHtml = `
       <div class="az-preview-wrap">
         <div class="az-preview-hd">
           <h3>Live preview</h3>
-          <p>The full Purely-app result screen for this product — tap any ingredient row to open its detail panel. Pulled live from the database.</p>
+          <p>The full Purely-app result screen — every field below is straight from the database. Tap any ingredient row to see its severity score, risks, benefits, legal limits, and references.</p>
         </div>
         <div class="pr-app-preview az-preview-tile" data-screen="report">
           <div class="skel"></div>
         </div>
       </div>`;
 
+    const galleryHtml = `
+      <div class="az-share-section">
+        <div class="az-screens-hd">
+          <div class="copy">
+            <h3>Shareable screens</h3>
+            <p>Each thumbnail is a 1080×1920 PNG built from the same Purely-app layout you see above — the actual app design, not a redrawn version. Save individually or grab them all at once.</p>
+          </div>
+          <button class="az-save-all" id="az-save-all" title="Download every screen as a separate PNG">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Save all screens</span>
+          </button>
+        </div>
+        <div class="az-share-grid" id="az-share-grid">
+          <div class="az-share-loading">Building shareable screens…</div>
+        </div>
+      </div>`;
+
+    results.hidden = false;
     results.innerHTML = `
       <div class="az-result">
         ${headHtml}
         ${previewHtml}
-        ${toolbarHtml}
-        ${screensHtml}
+        ${galleryHtml}
       </div>`;
 
-    /* Render the live phone-UI preview using the shared renderer from
-     * tiktok.js. Same data shape /tiktok's photo flow used to pass. */
-    if (window.PurelyApp?.renderToxinReport) {
-      const tile = document.querySelector('.az-preview-tile');
-      if (tile) {
-        try {
-          window.PurelyApp.renderToxinReport(tile, {
-            name, brand,
-            score, verdict,
-            imageUrl,
-            harmCount, benCount,
-            microplastics: mpStatus,
-            microplasticsDetail: typeof mp === 'object' ? mp : null,
-            category: p.subcategory || p.category || 'Other',
-            packaging: a.packagingMaterial || a.packaging?.material || (p.package_color ? `${p.package_color} container` : ''),
-            findings: dedup.map((f) => ({
-              kind: f.kind, name: f.name, label: f.name,
-              value: f.val, body: f.body || '', pill: f.val
-            })),
-            allIngredients: a.allIngredients || null,
-            company: a.company || null,
-            brandInfo: a.brandInfo || null,
-            servingSize: a.servingSize || '',
-            alternatives: a.alternatives || [],
-            nutrients: a.nutrients || [],
-            filename: `purely-${slug}.png`
-          });
-        } catch (e) {
-          console.warn('[analyze] preview render failed:', e);
-        }
+    /* ---------- Render the live preview ---------- */
+    const tile = document.querySelector('.az-preview-tile');
+    if (window.PurelyApp?.renderToxinReport && tile) {
+      try {
+        window.PurelyApp.renderToxinReport(tile, {
+          name, brand, score, verdict, imageUrl,
+          harmCount, benCount,
+          microplastics: mpStatus,
+          microplasticsDetail: typeof mp === 'object' ? mp : null,
+          category: p.subcategory || p.category || 'Other',
+          packaging: a.packagingMaterial || a.packaging?.material || (p.package_color ? `${p.package_color} container` : ''),
+          findings: dedup,
+          allIngredients: a.allIngredients || null,
+          company: a.company || null,
+          brandInfo: a.brandInfo || null,
+          servingSize: a.servingSize || '',
+          alternatives: a.alternatives || [],
+          nutrients: a.nutrients || [],
+          filename: `purely-${slug}.png`
+        });
+      } catch (e) {
+        console.warn('[analyze] preview render failed:', e);
       }
     }
 
-    /* Wire per-frame download buttons */
-    document.querySelectorAll('.az-frame').forEach((frame) => {
-      const btn = frame.querySelector('.azf-dl-btn');
-      const fname = frame.dataset.filename;
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (btn.classList.contains('busy')) return;
-        btn.classList.add('busy'); btn.disabled = true;
-        try {
-          await downloadFrame(frame, fname);
-          showToast('Saved', 'ok');
-        } catch (err) {
-          showToast('Download failed: ' + (err.message || err), 'err');
-        } finally {
-          btn.classList.remove('busy'); btn.disabled = false;
-        }
+    /* ---------- Build share screens by cloning sections of the live preview.
+     * Wait one frame so the preview DOM is fully painted before cloning. */
+    requestAnimationFrame(() => {
+      buildShareGallery({
+        previewTile: tile,
+        gridEl: document.getElementById('az-share-grid'),
+        payload, name, brand, score, ringColor, slug
       });
     });
 
+    /* Save-all button */
     const saveAllBtn = document.getElementById('az-save-all');
     saveAllBtn?.addEventListener('click', async () => {
       if (saveAllBtn.classList.contains('busy')) return;
@@ -483,10 +363,10 @@
       const orig = lbl ? lbl.textContent : '';
       let total = 0;
       try {
-        const list = Array.from(document.querySelectorAll('.az-frame'));
-        for (let i = 0; i < list.length; i++) {
-          if (lbl) lbl.textContent = `Saving ${i + 1} / ${list.length}…`;
-          await downloadFrame(list[i], list[i].dataset.filename);
+        const cards = Array.from(document.querySelectorAll('.az-share-card'));
+        for (let i = 0; i < cards.length; i++) {
+          if (lbl) lbl.textContent = `Saving ${i + 1} / ${cards.length}…`;
+          await downloadShareCard(cards[i]);
           total++;
           await sleep(280);
         }
@@ -501,231 +381,295 @@
   }
 
   /* ============================================================
-   *  Frame builders — each returns ONE 9:16 screen's HTML
+   *  Share gallery — clones DOM sections from the rendered live
+   *  preview so each frame uses the EXACT same app layout/styling
+   *  the user sees above. Per-ingredient screens come from
+   *  tiktok.js's buildIngredientScreenOffscreen which already
+   *  renders the full app ingredient detail (severity, risks,
+   *  benefits, legal limit, health guideline, references).
    * ============================================================ */
 
-  function statusBarHtml() {
-    return `
-      <div class="azf-status">
-        <span>9:41</span>
-        <div class="right">
-          <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="0.5"/><rect x="4" y="6" width="3" height="6" rx="0.5"/><rect x="8" y="3" width="3" height="9" rx="0.5"/><rect x="12" y="0" width="3" height="12" rx="0.5"/></svg>
-          <svg viewBox="0 0 18 13" fill="currentColor"><path d="M9 11l3.5-3a5 5 0 00-7 0L9 11zm0-6a8 8 0 015.5 2.2l1.3-1.3a10 10 0 00-13.6 0l1.3 1.3A8 8 0 019 5z"/></svg>
-          <svg viewBox="0 0 26 12"><rect x="0.5" y="0.5" width="22" height="11" rx="2.5" stroke="currentColor" fill="none"/><rect x="2.5" y="2.5" width="18" height="7" rx="1" fill="currentColor"/><rect x="23" y="3.5" width="2" height="5" rx="1" fill="currentColor"/></svg>
-        </div>
+  function buildShareGallery({ previewTile, gridEl, payload, name, brand, score, ringColor, slug }) {
+    if (!previewTile || !gridEl) return;
+    const paScreen = previewTile.querySelector('.pa-screen');
+    if (!paScreen) {
+      gridEl.innerHTML = '<div class="az-share-loading">Couldn\'t build screens — live preview not ready.</div>';
+      return;
+    }
+
+    const screens = [];
+
+    /* Screen 1: Score Result — top of the live preview, unchanged.
+     * Includes status bar, header pill, hero card, name + brand + tags,
+     * score ring, and the "Scored by Purely" footer. Pure DB data. */
+    screens.push({
+      label: 'Score result',
+      filename: `purely-${slug}-score.png`,
+      build: () => composeScreen(paScreen, ['.pa-status', '.pa-hdr', '.pa-hero', '.pa-info', '.pa-foot'])
+    });
+
+    /* Screen 2: Top concerns — clones the .pa-stat-rows block (substance
+     * findings with severity dots). Adds a mini product header so the
+     * screen has identity when viewed standalone. */
+    const statRows = paScreen.querySelector('.pa-stat-rows');
+    if (statRows && statRows.children.length) {
+      screens.push({
+        label: 'Top concerns',
+        filename: `purely-${slug}-concerns.png`,
+        build: () => composeScreenWithHeader(paScreen, [statRows], 'Top concerns', { name, brand, score, ringColor })
+      });
+    }
+
+    /* Screen 3: What's inside — clones the full .pa-inside block (every
+     * ingredient with status border, severity score color, description). */
+    const insideBlock = paScreen.querySelector('.pa-inside');
+    if (insideBlock) {
+      const list = insideBlock.querySelector('.pa-inside-list');
+      const cards = list ? Array.from(list.children) : [];
+      /* Paginate at 5 cards/screen so each fits 9:16 cleanly. */
+      const PAGE = 5;
+      const pageCount = Math.max(1, Math.ceil(cards.length / PAGE));
+      for (let pi = 0; pi < pageCount; pi++) {
+        const slice = cards.slice(pi * PAGE, (pi + 1) * PAGE);
+        const suffix = pageCount > 1 ? `-${pi + 1}` : '';
+        screens.push({
+          label: pageCount > 1 ? `Inside ${pi + 1}/${pageCount}` : "What's inside",
+          filename: `purely-${slug}-inside${suffix}.png`,
+          build: () => composeInsideScreen(paScreen, insideBlock, slice, { name, brand, score, ringColor })
+        });
+      }
+    }
+
+    /* Screen 4: Nutrition Facts — clone the nutrition section. */
+    const nutSection = findSectionByTitle(paScreen, 'Nutrition Facts');
+    if (nutSection) {
+      screens.push({
+        label: 'Nutrition Facts',
+        filename: `purely-${slug}-nutrition.png`,
+        build: () => composeScreenWithHeader(paScreen, [nutSection], 'Nutrition Facts', { name, brand, score, ringColor })
+      });
+    }
+
+    /* Screen 5: Top rated alternatives — clone the alternatives section. */
+    const altSection = findSectionByTitle(paScreen, 'Top rated');
+    if (altSection) {
+      screens.push({
+        label: 'Better picks',
+        filename: `purely-${slug}-alternatives.png`,
+        build: () => composeScreenWithHeader(paScreen, [altSection], 'Better picks', { name, brand, score, ringColor })
+      });
+    }
+
+    /* Screens 6..N: Per-ingredient detail. Uses the same renderer the
+     * live preview uses when you tap a row — every field from the
+     * ingredients table: severity_score, bonus_score, the -5..5 ingredient
+     * score, risks, benefits, legal_limit, health_guideline, sources. */
+    const ings = (previewTile._ingredients || []).slice(0, 6);
+    ings.forEach((ing) => {
+      screens.push({
+        label: (ing.name || 'Ingredient').slice(0, 22),
+        filename: `purely-${slug}-${safeSlug(ing.name)}.png`,
+        build: () => buildIngredientShareScreen(ing, name, score)
+      });
+    });
+
+    /* ---------- Render thumbnails ---------- */
+    gridEl.innerHTML = '';
+    screens.forEach((s) => {
+      const card = document.createElement('div');
+      card.className = 'az-share-card';
+      card.dataset.filename = s.filename;
+      const renderEl = s.build();
+      if (!renderEl) return;
+      renderEl.classList.add('az-share-render');
+      card.innerHTML = `
+        <div class="az-share-thumb"></div>
+        <div class="az-share-info">
+          <span class="az-share-label">${escapeHtml(s.label)}</span>
+          <button class="az-share-dl" title="Save this screen as PNG">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M12 4v12m0 0l-5-5m5 5l5-5M4 20h16" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Save</span>
+          </button>
+        </div>`;
+      card.querySelector('.az-share-thumb').appendChild(renderEl);
+      gridEl.appendChild(card);
+    });
+
+    /* Apply scale to fit each thumb. */
+    scaleThumbs(gridEl);
+    window.addEventListener('resize', () => scaleThumbs(gridEl), { passive: true });
+
+    /* Wire per-card download. */
+    gridEl.querySelectorAll('.az-share-card').forEach((card) => {
+      const btn = card.querySelector('.az-share-dl');
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (btn.classList.contains('busy')) return;
+        btn.classList.add('busy'); btn.disabled = true;
+        try {
+          await downloadShareCard(card);
+          showToast('Saved', 'ok');
+        } catch (err) {
+          showToast('Download failed: ' + (err.message || err), 'err');
+        } finally {
+          btn.classList.remove('busy'); btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  /* Pin each thumbnail's render to fit its container width. The render
+   * ships at native 420×747 (9:16) — we scale down for thumbnail display
+   * but keep the native size for capture (capture happens off-screen). */
+  function scaleThumbs(gridEl) {
+    gridEl.querySelectorAll('.az-share-thumb').forEach((thumb) => {
+      const w = thumb.clientWidth;
+      if (!w) return;
+      const render = thumb.querySelector('.az-share-render');
+      if (render) render.style.transform = `scale(${(w / 420).toFixed(4)})`;
+    });
+  }
+
+  /* Helper: given the live .pa-screen and a list of section selectors,
+   * build a new .pa-screen-export DOM whose children are clones of the
+   * matched sections, in order. Same CSS classes → same app styling. */
+  function composeScreen(paScreen, selectors) {
+    const out = makeAppScreenWrapper();
+    selectors.forEach((sel) => {
+      const el = paScreen.querySelector(sel);
+      if (el) out.appendChild(el.cloneNode(true));
+    });
+    return out;
+  }
+
+  /* Same as composeScreen but with a mini product header (small thumb +
+   * name + score chip) prepended below the status bar. Used for screens
+   * where the hero/score wouldn't be visible otherwise. */
+  function composeScreenWithHeader(paScreen, sectionEls, title, headerOpts) {
+    const out = makeAppScreenWrapper();
+    const status = paScreen.querySelector('.pa-status');
+    if (status) out.appendChild(status.cloneNode(true));
+    out.appendChild(buildMiniHeader(paScreen, headerOpts));
+    if (title) {
+      const t = document.createElement('div');
+      t.className = 'az-share-screen-title';
+      t.textContent = title;
+      out.appendChild(t);
+    }
+    sectionEls.forEach((el) => { if (el) out.appendChild(el.cloneNode(true)); });
+    /* Trailing footer for visual closure. */
+    const foot = paScreen.querySelector('.pa-foot');
+    if (foot) out.appendChild(foot.cloneNode(true));
+    return out;
+  }
+
+  /* Like composeScreenWithHeader but rebuilds the .pa-inside block from
+   * a sliced list of cards (so we can paginate long ingredient lists). */
+  function composeInsideScreen(paScreen, insideBlock, cards, headerOpts) {
+    const out = makeAppScreenWrapper();
+    const status = paScreen.querySelector('.pa-status');
+    if (status) out.appendChild(status.cloneNode(true));
+    out.appendChild(buildMiniHeader(paScreen, headerOpts));
+
+    /* Clone the .pa-inside header (h3 + Purely App pill) — drop the list.
+     * Then re-attach a fresh list with only the requested cards. */
+    const insideClone = insideBlock.cloneNode(true);
+    const list = insideClone.querySelector('.pa-inside-list');
+    if (list) {
+      list.innerHTML = '';
+      cards.forEach((c) => list.appendChild(c.cloneNode(true)));
+    }
+    out.appendChild(insideClone);
+    return out;
+  }
+
+  /* Build a small product-header strip (thumb + name + brand + score chip)
+   * using inline styles so it doesn't depend on extra CSS. Uses the same
+   * fonts/colors as the rest of the .pa-screen so it blends in. */
+  function buildMiniHeader(paScreen, { name, brand, score, ringColor }) {
+    const heroImg = paScreen.querySelector('.pa-hero-card img');
+    const imgSrc = heroImg ? heroImg.getAttribute('src') : '';
+    const verdict = window.PurelyApp?.scoreLabel?.(score) || '';
+    const div = document.createElement('div');
+    div.className = 'az-share-mini-hdr';
+    div.style.cssText = `
+      display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;
+      padding:8px 22px 14px;`;
+    div.innerHTML = `
+      <div style="width:52px;height:52px;background:#fff;border-radius:14px;border:1px solid #E3E0DA;
+                  display:grid;place-items:center;padding:6px;overflow:hidden">
+        ${imgSrc
+          ? `<img src="${escapeHtml(imgSrc)}" alt="" crossorigin="anonymous"
+                  style="width:100%;height:100%;object-fit:contain;display:block">`
+          : `<span style="font-weight:800;color:${ringColor};font-size:20px">${escapeHtml((brand || name || '?').charAt(0).toUpperCase())}</span>`}
+      </div>
+      <div style="min-width:0">
+        <div style="font-size:16px;font-weight:800;color:#1F1D1A;letter-spacing:-.01em;line-height:1.2;
+                    overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(name)}</div>
+        ${brand ? `<div style="font-size:13px;color:#9B958D;font-weight:500;margin-top:2px">${escapeHtml(brand)}</div>` : ''}
+      </div>
+      <div style="background:${ringColor};color:#fff;border-radius:999px;padding:7px 14px;
+                  font-size:13px;font-weight:800;letter-spacing:-.01em;white-space:nowrap">
+        ${score} ${verdict ? `<span style="font-weight:600;opacity:.92;margin-left:4px">${escapeHtml(verdict)}</span>` : ''}
       </div>`;
+    return div;
   }
 
-  function appBarHtml() {
-    return `
-      <div class="azf-bar">
-        <button class="azf-bar-btn" aria-label="Back">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <div class="azf-bar-pill">
-          <img src="${PURELY_LOGO_PATH}" alt="">
-          <span>Purely App</span>
-        </div>
-        <button class="azf-bar-btn" aria-label="Share">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 12L16 5M8 12l8 7M8 12h12" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>`;
+  function makeAppScreenWrapper() {
+    /* Native 420×747 (9:16). Background and font inherited from .pa-screen. */
+    const w = document.createElement('div');
+    w.className = 'pa-screen az-share-screen';
+    w.style.cssText = 'width:420px;height:747px;overflow:hidden;background:#F7F5F0;';
+    return w;
   }
 
-  function miniHeaderHtml({ name, brand, ringColor, score, imageUrl }) {
-    return `
-      <div class="azf-mini-hd">
-        <div class="azf-mini-thumb">
-          ${imageUrl
-            ? `<img src="${escapeHtml(proxied(imageUrl))}" alt="" crossorigin="anonymous">`
-            : `<span style="font-weight:800;color:${ringColor};font-size:18px">${escapeHtml((brand || name).charAt(0).toUpperCase())}</span>`}
-        </div>
-        <div>
-          <div class="azf-mini-name">${escapeHtml(name.slice(0, 38))}</div>
-          ${brand ? `<div class="azf-mini-brand">${escapeHtml(brand.slice(0, 30))}</div>` : ''}
-        </div>
-        <span class="azf-mini-score" style="--ring:${ringColor};background:${ringColor}">${score}</span>
-      </div>`;
+  /* Find a .pa-section block whose first <h3> text contains the given
+   * substring — the live preview uses simple .pa-section blocks for
+   * Nutrition Facts / Top rated alternatives. */
+  function findSectionByTitle(paScreen, needle) {
+    const sections = paScreen.querySelectorAll('.pa-section');
+    for (const s of sections) {
+      const t = s.querySelector('.pa-section-title');
+      if (t && t.textContent.toLowerCase().includes(needle.toLowerCase())) return s;
+    }
+    return null;
   }
 
-  function ringSvg(score, color) {
-    const dash = (Math.max(0, Math.min(100, score)) / 100) * 289;
-    const angleDeg = (score / 100) * 360 - 90;
-    const dotX = 51 + 46 * Math.cos(angleDeg * Math.PI / 180);
-    const dotY = 51 + 46 * Math.sin(angleDeg * Math.PI / 180);
-    return `
-      <svg viewBox="0 0 102 102">
-        <circle cx="51" cy="51" r="46" stroke="#E3E0DA" stroke-width="7" fill="none"/>
-        <circle cx="51" cy="51" r="46" stroke="${color}" stroke-width="7" fill="none"
-          stroke-linecap="round"
-          stroke-dasharray="289.03"
-          stroke-dashoffset="${(289.03 * (1 - score / 100)).toFixed(2)}"
-          transform="rotate(-90 51 51)"/>
-        <circle cx="${dotX.toFixed(2)}" cy="${dotY.toFixed(2)}" r="5.5" fill="${color}"/>
-      </svg>`;
-  }
-
-  function frameScore({ name, brand, ringColor, score, verdict, imageUrl, mpDetected }) {
-    const isGood = score >= 75;
-    const photoHtml = imageUrl
-      ? `<img src="${escapeHtml(proxied(imageUrl))}" alt="" crossorigin="anonymous">`
-      : `<div class="ph" style="background:linear-gradient(135deg,${ringColor},${ringColor}99)">${escapeHtml((brand || name).charAt(0).toUpperCase())}</div>`;
-    const tagIco = isGood
-      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12l4 4 10-10" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l10 17H2L12 3zm0 6v5m0 3v.01" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    return `
-      ${statusBarHtml()}
-      ${appBarHtml()}
-      <div class="azf-body" style="padding-top:10px">
-        <div class="azf-hero">
-          <div class="azf-hero-card">${photoHtml}</div>
-          <div class="azf-name">${escapeHtml(name)}</div>
-          ${brand ? `<div class="azf-brand">${escapeHtml(brand)}</div>` : ''}
-          <div class="azf-tags">
-            <span class="azf-tag ${isGood ? 'good' : 'warn'}">
-              ${tagIco}
-              ${isGood ? 'Health report' : 'Toxin report'}
-            </span>
-          </div>
-        </div>
-        <div class="azf-ring-wrap">
-          <div class="azf-ring">
-            ${ringSvg(score, ringColor)}
-            <div class="azf-ring-text">
-              <div class="num">${score}</div>
-              <div class="lbl">${escapeHtml(verdict)}</div>
-            </div>
-          </div>
-        </div>
-        <div class="azf-foot">
-          <span>Scored by</span>
-          <img src="${PURELY_LOGO_PATH}" alt="">
-          <strong>Purely</strong>
-        </div>
-      </div>`;
-  }
-
-  function frameSnapshot({ name, brand, ringColor, score, imageUrl, harmCount, benCount, mpStatus, findings }) {
-    const mpDetected = /Detected|Likely|High/i.test(mpStatus);
-    const top = (findings || []).slice(0, 5);
-    return `
-      ${statusBarHtml()}
-      ${appBarHtml()}
-      <div class="azf-body">
-        ${miniHeaderHtml({ name, brand, ringColor, score, imageUrl })}
-        <div class="azf-stats">
-          <div class="azf-stat-card">
-            <span class="v ${harmCount > 0 ? 'bad' : 'good'}">${harmCount}</span>
-            <span class="l">Harmful substances</span>
-          </div>
-          <div class="azf-stat-card">
-            <span class="v good">${benCount}</span>
-            <span class="l">Beneficial</span>
-          </div>
-          <div class="azf-stat-card">
-            <span class="v ${mpDetected ? 'bad' : ''}">${escapeHtml(String(mpStatus).slice(0, 14))}</span>
-            <span class="l">Microplastics</span>
-          </div>
-        </div>
-        ${top.length ? `<div class="azf-section-title">Top concerns</div>` : ''}
-        ${top.map((f) => `
-          <div class="azf-row">
-            <span class="ico">${rowIcon(f.kind)}</span>
-            <span class="lbl">${escapeHtml(String(f.name || '').slice(0, 32))}</span>
-            <span class="val">${escapeHtml(String(f.val || '').slice(0, 18))}</span>
-            <span class="dot ${f.kind === 'bad' ? 'bad' : f.kind === 'good' ? 'good' : ''}"></span>
-          </div>`).join('')}
-      </div>`;
-  }
-
-  function frameInside({ name, brand, ringColor, score, imageUrl, ingredients }) {
-    const items = (ingredients || []).slice(0, 6);
-    return `
-      ${statusBarHtml()}
-      ${appBarHtml()}
-      <div class="azf-body">
-        ${miniHeaderHtml({ name, brand, ringColor, score, imageUrl })}
-        <div class="azf-section-title">What's inside</div>
-        ${items.map((i) => {
-          const status = i.status === 'harmful' ? 'harmful'
-                       : i.status === 'beneficial' ? 'beneficial'
-                       : 'neutral';
-          const statusText = status.charAt(0).toUpperCase() + status.slice(1);
-          return `
-            <div class="azf-ing-card ${status}">
-              <div class="azf-ing-name">${escapeHtml(String(i.name || '').slice(0, 36))}</div>
-              <div class="azf-ing-status">${statusText}</div>
-              ${i.description ? `<div class="azf-ing-snippet">${escapeHtml(String(i.description).slice(0, 110))}</div>` : ''}
-            </div>`;
-        }).join('')}
-      </div>`;
-  }
-
-  function frameDeepDive({ ing, productName, productScore }) {
-    const status = ing.status === 'harmful' ? 'bad'
-                 : ing.status === 'beneficial' ? 'good' : 'neutral';
-    const score = Number.isFinite(ing.score)
-      ? ing.score
-      : (status === 'bad' ? -3 : status === 'good' ? 3 : 0);
-    const min = -5, max = 5;
-    const clamped = Math.max(min, Math.min(max, score));
-    const sliderPct = ((clamped - min) / (max - min)) * 100;
-    const sections = [
-      { key: 'risks', title: 'Risks', body: ing.risks || (status === 'bad' ? ing.description : '') },
-      { key: 'benefits', title: 'Benefits', body: ing.benefits || (status === 'good' ? ing.description : '') }
-    ].filter((s) => (s.body || '').trim());
-
-    return `
-      ${statusBarHtml()}
-      ${appBarHtml()}
-      <div class="azf-body scroll">
-        <div class="azf-deep-name">${escapeHtml(String(ing.name || 'Ingredient'))}</div>
-        ${ing.description ? `<div class="azf-deep-desc">${escapeHtml(String(ing.description).slice(0, 220))}</div>` : ''}
-        <div class="azf-deep-score-card ${status}">
-          <div class="azf-deep-score-hd">
-            <span>Score</span>
-            <span>−5 to 5 scale</span>
-          </div>
-          <div class="azf-deep-score-num">${score > 0 ? '+' : ''}${score}</div>
-          <div class="azf-deep-slider">
-            <div class="azf-deep-slider-thumb" style="left:${sliderPct.toFixed(1)}%"></div>
-          </div>
-          <div class="azf-deep-slider-labels">
-            <span><strong>−5</strong>Very bad</span>
-            <span><strong>0</strong>Okay</span>
-            <span><strong>5</strong>Very good</span>
-          </div>
-        </div>
-        ${sections.map((s) => `
-          <div class="azf-deep-section">
-            <h4>${escapeHtml(s.title)}</h4>
-            <p>${escapeHtml(String(s.body).slice(0, 220))}</p>
-          </div>`).join('')}
-        <div class="azf-foot" style="margin-top:auto">
-          <span>${escapeHtml(productName.slice(0, 30))}</span>
-          <span>·</span>
-          <strong>${productScore}/100</strong>
-        </div>
-      </div>`;
-  }
-
-  function rowIcon(kind) {
-    if (kind === 'bad') return '<svg viewBox="0 0 24 24" fill="none" stroke="#B24C4C" stroke-width="2"><path d="M12 3l10 17H2L12 3zm0 6v5m0 3v.01" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    if (kind === 'good') return '<svg viewBox="0 0 24 24" fill="none" stroke="#2F8A5B" stroke-width="2.2"><path d="M5 12l4 4 10-10" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 19c8 0 14-6 14-14 0-1 0-1-1-1-8 0-14 6-14 14 0 1 0 1 1 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  }
-
-  function toFakeIng(f) {
-    return {
-      name: f.name,
-      description: f.body,
-      status: f.kind === 'bad' ? 'harmful' : f.kind === 'good' ? 'beneficial' : 'neutral',
-      score: f.kind === 'bad' ? -3 : f.kind === 'good' ? 3 : 0
-    };
+  /* Build a per-ingredient share screen using tiktok.js's offscreen
+   * builder. That function returns the .ing-screen DOM with EVERY DB
+   * field for the ingredient (severity score, ingredient score, risks,
+   * benefits, legal limit, health guideline, references). We pull it out
+   * of its offscreen wrapper, add an explicit 9:16 size, and return it. */
+  function buildIngredientShareScreen(ing, productName, productScore) {
+    if (!window.PurelyApp?.buildIngredientScreenOffscreen) return null;
+    const screen = window.PurelyApp.buildIngredientScreenOffscreen({
+      name: ing.name,
+      description: ing.description,
+      status: ing.status,
+      score: ing.score,
+      risks: ing.risks || (ing.status === 'harmful' ? ing.description : ''),
+      benefits: ing.benefits || (ing.status === 'beneficial' ? ing.description : ''),
+      legalLimit: ing.legal_limit || '',
+      healthGuideline: ing.health_guideline || '',
+      references: ing.sources || '',
+      productName, productScore
+    });
+    if (!screen) return null;
+    /* The builder appends the .ing-screen to a hidden offscreen wrap on
+     * document.body. Move the screen out of that wrap so we can drop it
+     * into our visible thumbnail card. */
+    const oldWrap = screen.parentElement;
+    screen.style.cssText = 'width:420px;height:747px;background:#F7F5F0;border-radius:0;overflow:hidden';
+    if (oldWrap && oldWrap.parentNode === document.body) oldWrap.remove();
+    return screen;
   }
 
   /* ============================================================
-   *  html2canvas frame capture — one element → one 9:16 PNG
+   *  Capture: clone the .az-share-render into an offscreen
+   *  full-size container (no transform), capture with html2canvas
+   *  at scale=2.6 → 1080×1920 PNG, trigger download.
    * ============================================================ */
   let _h2cPromise = null;
   function loadHtml2Canvas() {
@@ -741,46 +685,49 @@
     return _h2cPromise;
   }
 
-  /**
-   * Capture one .az-frame element → single 9:16 PNG. The frame already has
-   * a fixed 9:16 aspect via CSS, so we render it at its current size and
-   * upsample with html2canvas's `scale` param to land at ~1080×1920. No
-   * slicing, no padding — the PNG matches what's visible on screen.
-   */
-  async function downloadFrame(frame, filename) {
-    const inner = frame.querySelector('.az-frame-inner');
-    if (!inner) throw new Error('no frame inner');
+  async function downloadShareCard(card) {
+    const filename = card.dataset.filename || 'purely-screen.png';
+    const render = card.querySelector('.az-share-render');
+    if (!render) throw new Error('no render to capture');
     const h2c = await loadHtml2Canvas();
 
-    /* Wait for inline images to load so the canvas captures them. */
-    const imgs = Array.from(inner.querySelectorAll('img'));
+    /* Wait for inline images. */
+    const imgs = Array.from(render.querySelectorAll('img'));
     await Promise.all(imgs.map((img) => (img.complete && img.naturalWidth > 0)
       ? null
       : new Promise((res) => { img.onload = img.onerror = res; setTimeout(res, 4000); })));
 
-    const rect = inner.getBoundingClientRect();
-    const W = Math.max(1, Math.round(rect.width));
-    const H = Math.max(1, Math.round(rect.height));
-    /* Target ~1080px width for a crisp portrait export — clamp the scale
-     * so we don't blow up tiny previews into 4k canvases. */
-    const scale = Math.min(4, Math.max(2, 1080 / W));
-
-    const canvas = await h2c(inner, {
-      backgroundColor: '#F7F5F0',
-      scale,
-      useCORS: true,
-      allowTaint: false,
-      logging: false,
-      width: W, height: H,
-      windowWidth: W, windowHeight: H,
-      imageTimeout: 8000
-    });
-
-    const a = document.createElement('a');
-    a.href = canvas.toDataURL('image/png');
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    /* Clone offscreen at native size with no transform — html2canvas
+     * struggles with CSS transforms, so we do this trick instead. */
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;top:0;left:-12000px;z-index:-1;pointer-events:none;background:#F7F5F0';
+    const clone = render.cloneNode(true);
+    clone.style.transform = 'none';
+    clone.style.position = 'static';
+    clone.style.width = '420px';
+    clone.style.height = '747px';
+    wrap.appendChild(clone);
+    document.body.appendChild(wrap);
+    try {
+      void clone.offsetHeight;
+      const canvas = await h2c(clone, {
+        backgroundColor: '#F7F5F0',
+        scale: 2.6,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        width: 420, height: 747,
+        windowWidth: 420, windowHeight: 747,
+        imageTimeout: 8000
+      });
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } finally {
+      wrap.remove();
+    }
   }
 })();

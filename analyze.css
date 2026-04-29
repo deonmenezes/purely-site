@@ -314,6 +314,104 @@
   margin-top: 14px; font-size: 12px; color: #9B958D; font-style: italic;
 }
 
+/* ============================================================
+ *  Share gallery — thumbnails of cloned app-screen sections.
+ *  Each .az-share-render is a native-size 420×747 (9:16) DOM tree
+ *  that uses .pa-screen / .ing-screen / etc. classes from
+ *  tiktok.css, so the styling matches the live preview exactly.
+ *  We CSS-scale it down for the thumbnail; capture happens at
+ *  full size off-screen.
+ * ============================================================ */
+.az-share-section {
+  display: flex; flex-direction: column; gap: 14px;
+}
+.az-share-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  align-items: start;
+}
+.az-share-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 13px;
+  padding: 40px 0;
+}
+.az-share-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform .15s, box-shadow .15s;
+}
+.az-share-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -16px rgba(31, 29, 26, .18);
+}
+.az-share-thumb {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #F7F5F0;
+  position: relative;
+  border: 1px solid #E3E0DA;
+}
+.az-share-thumb .az-share-render {
+  position: absolute;
+  top: 0; left: 0;
+  width: 420px;
+  height: 747px;
+  transform-origin: top left;
+  transform: scale(1); /* set per-card by JS to match thumb width */
+  background: #F7F5F0;
+}
+/* The cloned .pa-screen inside the render carries its own scroll, but
+ * since we want the screen to FIT (not scroll) for capture, force it
+ * to overflow-hidden inside the share-render wrapper. */
+.az-share-render .pa-screen,
+.az-share-render .ing-screen {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+.az-share-render .pa-screen img,
+.az-share-render .ing-screen img { max-width: 100%; }
+
+/* Title row used by composeScreenWithHeader. */
+.az-share-screen-title {
+  font-size: 22px; font-weight: 800; color: #1F1D1A;
+  letter-spacing: -.01em;
+  padding: 4px 22px 6px;
+}
+
+.az-share-info {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+}
+.az-share-label {
+  font-size: 12px; font-weight: 700; color: var(--ink);
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.az-share-dl {
+  background: #1F1D1A; color: #fff; border: 0;
+  padding: 6px 12px; border-radius: 999px;
+  font: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px;
+  transition: filter .15s, transform .15s;
+}
+.az-share-dl:hover:not(:disabled) { filter: brightness(1.2); transform: translateY(-1px); }
+.az-share-dl:disabled { opacity: .55; cursor: wait; }
+.az-share-dl svg { width: 12px; height: 12px; }
+.az-share-dl.busy svg { animation: spin 1s linear infinite; }
+
 /* ---------- Interactive iPhone preview (rendered by tiktok.js's
  *  renderToxinReport — same component the /tiktok page uses).
  *  Hide the legacy slicing-based download button on this page; the

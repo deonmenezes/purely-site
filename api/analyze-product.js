@@ -31,7 +31,10 @@ const supabase = createClient(
 const BUCKET = 'influencer-uploads';
 
 function bad(res, code, msg) { return res.status(code).json({ error: msg }); }
-function hashUrl(u) { return crypto.createHash('sha1').update(u).digest('hex').slice(0, 16); }
+/* Version-prefixed hash so old cached payloads (with score=0 ingredients
+ * before the severity fallback was added) get bypassed automatically. Bump
+ * the prefix any time the analysis schema changes. */
+function hashUrl(u) { return crypto.createHash('sha1').update('v2:' + u).digest('hex').slice(0, 16); }
 
 async function readCache(id) {
   try {
