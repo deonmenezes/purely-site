@@ -314,6 +314,48 @@
   margin-top: 14px; font-size: 12px; color: #9B958D; font-style: italic;
 }
 
+/* ---------- Interactive iPhone preview (rendered by tiktok.js's
+ *  renderToxinReport — same component the /tiktok page uses).
+ *  Hide the legacy slicing-based download button on this page; the
+ *  share-frames gallery below handles all downloads now. */
+.az-preview-wrap {
+  background: #fdfaf5;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.az-preview-hd h3 { margin: 0; font-size: 18px; font-weight: 800; color: var(--ink); }
+.az-preview-hd p { margin: 4px 0 0; color: var(--ink-3); font-size: 13px; line-height: 1.5; }
+
+.az-preview-tile {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  position: relative;
+  background: #F7F5F0;
+  border-radius: 32px;
+  overflow: hidden;
+  box-shadow: 0 28px 60px -28px rgba(31, 29, 26, .35);
+  min-height: 720px;
+}
+.az-preview-tile .skel {
+  position: absolute; inset: 0;
+  background: linear-gradient(110deg, #f1eee8 8%, #fafaf6 18%, #f1eee8 33%);
+  background-size: 200% 100%;
+  animation: az-shimmer 1.4s linear infinite;
+}
+@keyframes az-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+/* Hide the slice-based "Save PNG" button — the new share gallery below
+ * handles downloads with distinct 9:16 frames instead. */
+.az-preview-tile .dl-btn,
+.az-preview-tile .fs-btn { display: none !important; }
+
 /* Tighten on smaller screens — keep frames legible. */
 @media (max-width: 720px) {
   .az-screens { grid-template-columns: 1fr; }

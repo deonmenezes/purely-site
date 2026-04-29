@@ -215,20 +215,27 @@
     document.removeEventListener('keydown', _ingEsc);
   }
 
-  pasteBtn.addEventListener('click', async () => {
-    try {
-      const t = await navigator.clipboard.readText();
-      if (t) urlInput.value = t.trim();
-    } catch { showToast('Paste blocked — paste manually', 'err'); }
-  });
-  refreshToggle.addEventListener('click', () => {
-    forceRefresh = !forceRefresh;
-    refreshToggle.classList.toggle('active', forceRefresh);
-    refreshToggle.textContent = forceRefresh ? 'Force refresh ON' : 'Force refresh';
-  });
+  /* Page-specific bindings — only attach if the TikTok-page elements exist.
+   * On /analyze we load this script for its renderers but the form isn't
+   * present, so guard the bindings to avoid null .addEventListener errors. */
+  if (pasteBtn) {
+    pasteBtn.addEventListener('click', async () => {
+      try {
+        const t = await navigator.clipboard.readText();
+        if (t) urlInput.value = t.trim();
+      } catch { showToast('Paste blocked — paste manually', 'err'); }
+    });
+  }
+  if (refreshToggle) {
+    refreshToggle.addEventListener('click', () => {
+      forceRefresh = !forceRefresh;
+      refreshToggle.classList.toggle('active', forceRefresh);
+      refreshToggle.textContent = forceRefresh ? 'Force refresh ON' : 'Force refresh';
+    });
+  }
   sampleBtn?.addEventListener('click', () => { urlInput.value = sampleBtn.dataset.sample; });
 
-  form.addEventListener('submit', (e) => { e.preventDefault(); analyze(); });
+  if (form) form.addEventListener('submit', (e) => { e.preventDefault(); analyze(); });
 
   /* =====================================================================
    *  APP-SCREEN RENDERERS — instead of calling OpenAI to imagine the
@@ -2314,4 +2321,22 @@
       tile.appendChild(e);
     }
   }
+
+  /* Expose render API so other pages (e.g. /analyze) can reuse the
+   * iPhone preview without duplicating ~1000 lines of rendering code.
+   * NOTE: these functions touch closure state (showToast, escapeHtml,
+   * appScoreColor, etc.) — they only work when this whole script is
+   * loaded on the page. */
+  window.PurelyApp = {
+    renderToxinReport,
+    openIngredientDetail,
+    closeIngredientDetail,
+    downloadElement,
+    saveAllScreens,
+    buildIngredientScreenOffscreen,
+    scoreColor: appScoreColor,
+    scoreLabel: appScoreLabel,
+    showToast,
+    escapeHtml
+  };
 })();

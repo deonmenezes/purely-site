@@ -399,12 +399,62 @@
           </div>`).join('')}
       </div>`;
 
+    /* Interactive iPhone preview — rendered by tiktok.js's renderToxinReport
+     * (the exact same component the /tiktok page uses). The .pr-app-preview
+     * class triggers the page-mode behavior in attachExpand: clicks on
+     * ingredient rows open the detail modal, the slice-based "Save PNG"
+     * button is hidden by analyze.css. */
+    const previewHtml = `
+      <div class="az-preview-wrap">
+        <div class="az-preview-hd">
+          <h3>Live preview</h3>
+          <p>The full Purely-app result screen for this product — tap any ingredient row to open its detail panel. Pulled live from the database.</p>
+        </div>
+        <div class="pr-app-preview az-preview-tile" data-screen="report">
+          <div class="skel"></div>
+        </div>
+      </div>`;
+
     results.innerHTML = `
       <div class="az-result">
         ${headHtml}
+        ${previewHtml}
         ${toolbarHtml}
         ${screensHtml}
       </div>`;
+
+    /* Render the live phone-UI preview using the shared renderer from
+     * tiktok.js. Same data shape /tiktok's photo flow used to pass. */
+    if (window.PurelyApp?.renderToxinReport) {
+      const tile = document.querySelector('.az-preview-tile');
+      if (tile) {
+        try {
+          window.PurelyApp.renderToxinReport(tile, {
+            name, brand,
+            score, verdict,
+            imageUrl,
+            harmCount, benCount,
+            microplastics: mpStatus,
+            microplasticsDetail: typeof mp === 'object' ? mp : null,
+            category: p.subcategory || p.category || 'Other',
+            packaging: a.packagingMaterial || a.packaging?.material || (p.package_color ? `${p.package_color} container` : ''),
+            findings: dedup.map((f) => ({
+              kind: f.kind, name: f.name, label: f.name,
+              value: f.val, body: f.body || '', pill: f.val
+            })),
+            allIngredients: a.allIngredients || null,
+            company: a.company || null,
+            brandInfo: a.brandInfo || null,
+            servingSize: a.servingSize || '',
+            alternatives: a.alternatives || [],
+            nutrients: a.nutrients || [],
+            filename: `purely-${slug}.png`
+          });
+        } catch (e) {
+          console.warn('[analyze] preview render failed:', e);
+        }
+      }
+    }
 
     /* Wire per-frame download buttons */
     document.querySelectorAll('.az-frame').forEach((frame) => {
