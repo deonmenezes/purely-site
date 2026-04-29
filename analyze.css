@@ -1,0 +1,324 @@
+/* ==========================================================================
+ *  /analyze — product scanner page
+ *  Reuses tiktok.css styles for the hero/photo upload chrome.
+ *  Adds: distinct iPhone-aspect "screen frames" that download as separate
+ *  9:16 PNGs (one per logical view) so creators get content-ready visuals
+ *  instead of vertical slices of a single long page.
+ * ========================================================================== */
+
+.az-page { padding: 60px 0 100px; }
+
+/* ---------- Result wrapper ---------- */
+.az-result {
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.az-result-hd {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 18px;
+  align-items: center;
+  background: #fdfaf5;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 18px 22px;
+}
+.az-result-hd .photo {
+  width: 96px; height: 96px; border-radius: 16px;
+  background: #fff; border: 1px solid var(--line);
+  overflow: hidden; display: grid; place-items: center;
+}
+.az-result-hd .photo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.az-result-hd h2 { margin: 0; font-size: 22px; font-weight: 800; color: var(--ink); letter-spacing: -.01em; line-height: 1.15; }
+.az-result-hd .brand { color: var(--ink-3); font-size: 13px; margin-top: 4px; }
+.az-result-hd .matched { color: var(--ink-3); font-size: 12px; margin-top: 8px; font-style: italic; }
+.az-result-hd .score-pill {
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  padding: 10px 14px; text-align: center; min-width: 84px;
+}
+.az-result-hd .score-pill strong { display: block; font-size: 22px; font-weight: 800; color: var(--ink); }
+.az-result-hd .score-pill span { font-size: 11px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; }
+
+/* ---------- Screens toolbar ---------- */
+.az-screens-hd {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 4px 4px 0;
+}
+.az-screens-hd .copy { flex: 1; min-width: 240px; }
+.az-screens-hd h3 { margin: 0; font-size: 18px; font-weight: 800; color: var(--ink); }
+.az-screens-hd p { margin: 4px 0 0; color: var(--ink-3); font-size: 13px; line-height: 1.5; }
+.az-save-all {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: linear-gradient(180deg, var(--green-700), var(--green-800));
+  color: #fff; border: 0; border-radius: 12px;
+  padding: 12px 18px; font: inherit; font-weight: 700; font-size: 14px;
+  cursor: pointer; box-shadow: 0 12px 24px -10px rgba(47, 122, 71, .45);
+  transition: transform .15s, filter .15s, opacity .15s;
+}
+.az-save-all:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+.az-save-all:disabled { opacity: .55; cursor: wait; }
+.az-save-all svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.az-save-all.busy svg { animation: spin 1s linear infinite; }
+
+/* ---------- Screen carousel ---------- */
+.az-screens {
+  display: grid; gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+}
+
+/* Individual frame — explicit 9:16 aspect ratio so html2canvas captures
+ * exactly one shareable iPhone-style PNG per frame (no slicing needed). */
+.az-frame {
+  position: relative;
+  background: #F7F5F0;
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px -24px rgba(31, 29, 26, .25);
+  aspect-ratio: 9 / 16;
+  display: flex; flex-direction: column;
+}
+
+/* The capture target — exactly the .az-frame-inner gets rendered to PNG. */
+.az-frame-inner {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  background: #F7F5F0;
+}
+
+/* Status bar (mimics iOS) */
+.azf-status {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 22px 6px;
+  font-size: 13px; font-weight: 700; color: #1F1D1A;
+  flex: 0 0 auto;
+}
+.azf-status .right { display: flex; align-items: center; gap: 4px; }
+.azf-status .right svg { height: 11px; width: auto; }
+
+/* App bar (back / Purely App / score chip) */
+.azf-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 16px 10px;
+  flex: 0 0 auto;
+}
+.azf-bar-btn {
+  width: 32px; height: 32px; border-radius: 10px;
+  background: rgba(31, 29, 26, .04); border: 0;
+  display: grid; place-items: center; cursor: pointer; color: #1F1D1A;
+}
+.azf-bar-btn svg { width: 16px; height: 16px; }
+.azf-bar-pill {
+  display: flex; align-items: center; gap: 7px;
+  background: #fff; border: 1px solid #E3E0DA; border-radius: 999px;
+  padding: 6px 12px; box-shadow: 0 1px 4px rgba(0, 0, 0, .04);
+}
+.azf-bar-pill img { width: 18px; height: 18px; flex: 0 0 18px; object-fit: contain; }
+.azf-bar-pill span { font-size: 12px; font-weight: 700; color: #1F1D1A; letter-spacing: -.005em; }
+
+/* Scrollable body — but we cap the content to fit 9:16 so it doesn't overflow */
+.azf-body {
+  flex: 1 1 auto;
+  overflow: hidden;
+  padding: 4px 18px 18px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.azf-body.scroll { overflow-y: auto; }
+.azf-body.scroll::-webkit-scrollbar { width: 4px; }
+.azf-body.scroll::-webkit-scrollbar-thumb { background: rgba(31, 29, 26, .15); border-radius: 4px; }
+
+/* ---------- Frame: Score / Hero ---------- */
+.azf-hero { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 4px 0 8px; }
+.azf-hero-card {
+  width: 60%; aspect-ratio: 1; max-width: 220px;
+  background: #fff; border-radius: 18px;
+  display: grid; place-items: center; padding: 14px;
+  box-shadow: 0 14px 32px -16px rgba(31, 29, 26, .18);
+}
+.azf-hero-card img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.azf-hero-card .ph {
+  width: 100%; height: 100%; border-radius: 12px;
+  display: grid; place-items: center; font-weight: 800; font-size: 36px; color: #fff;
+}
+
+.azf-name { text-align: center; font-size: 22px; font-weight: 800; color: #1F1D1A; line-height: 1.15; padding: 0 8px; }
+.azf-brand { text-align: center; font-size: 13px; font-weight: 600; color: #6B6762; }
+.azf-tags { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.azf-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; border-radius: 999px; font-size: 11px; font-weight: 700;
+  background: #2F3A35; color: #fff;
+}
+.azf-tag.warn { background: #FBE9E9; color: #B24C4C; }
+.azf-tag.good { background: #E6F1EA; color: #2F8A5B; }
+.azf-tag svg { width: 12px; height: 12px; }
+
+.azf-ring-wrap { display: flex; flex-direction: column; align-items: center; margin-top: auto; padding-bottom: 8px; }
+.azf-ring { position: relative; width: 132px; height: 132px; }
+.azf-ring svg { width: 100%; height: 100%; transform: rotate(0deg); }
+.azf-ring-text {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.azf-ring-text .num { font-size: 30px; font-weight: 800; color: #1F1D1A; line-height: 1; }
+.azf-ring-text .lbl { font-size: 12px; font-weight: 700; color: #6B6762; text-transform: capitalize; margin-top: 2px; }
+
+.azf-foot {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 4px 0; font-size: 12px; color: #6B6762;
+}
+.azf-foot img { width: 18px; height: 18px; object-fit: contain; }
+.azf-foot strong { color: #1F1D1A; font-weight: 800; }
+
+/* ---------- Frame: Snapshot (stats + concerns) ---------- */
+.azf-mini-hd {
+  display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center;
+  padding: 6px 0 10px; border-bottom: 1px solid #E3E0DA;
+}
+.azf-mini-thumb { width: 38px; height: 38px; background: #fff; border-radius: 10px; display: grid; place-items: center; padding: 4px; border: 1px solid #E3E0DA; }
+.azf-mini-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.azf-mini-name { font-size: 13px; font-weight: 700; color: #1F1D1A; line-height: 1.2; }
+.azf-mini-brand { font-size: 11px; color: #6B6762; margin-top: 2px; }
+.azf-mini-score {
+  background: var(--ring, #2F8A5B); color: #fff;
+  border-radius: 999px; padding: 4px 10px;
+  font-size: 12px; font-weight: 800;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+
+.azf-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 4px 0; }
+.azf-stat-card {
+  background: #fff; border-radius: 12px; padding: 12px 8px;
+  text-align: center; box-shadow: 0 4px 12px -8px rgba(31, 29, 26, .15);
+}
+.azf-stat-card .v { font-size: 20px; font-weight: 800; color: #1F1D1A; line-height: 1; }
+.azf-stat-card .v.bad { color: #B24C4C; }
+.azf-stat-card .v.good { color: #2F8A5B; }
+.azf-stat-card .l { display: block; font-size: 10px; color: #6B6762; margin-top: 5px; line-height: 1.25; }
+
+.azf-section-title {
+  font-size: 13px; font-weight: 800; color: #1F1D1A;
+  margin: 8px 0 2px; letter-spacing: -.005em;
+}
+
+.azf-row {
+  display: grid; grid-template-columns: 22px 1fr auto 8px; gap: 8px; align-items: center;
+  background: #fff; border-radius: 10px; padding: 10px 12px;
+  box-shadow: 0 3px 10px -6px rgba(31, 29, 26, .10);
+}
+.azf-row .ico { width: 18px; height: 18px; color: #6B6762; }
+.azf-row .ico svg { width: 100%; height: 100%; }
+.azf-row .lbl { font-size: 12px; font-weight: 600; color: #1F1D1A; line-height: 1.2; }
+.azf-row .val { font-size: 11px; font-weight: 700; color: #6B6762; text-align: right; }
+.azf-row .dot { width: 8px; height: 8px; border-radius: 50%; background: #E3E0DA; }
+.azf-row .dot.bad { background: #B24C4C; }
+.azf-row .dot.good { background: #2F8A5B; }
+
+/* ---------- Frame: ingredient list ---------- */
+.azf-ing-card {
+  background: #fff; border-radius: 12px; padding: 11px 12px;
+  border-left: 3px solid #E3E0DA;
+  box-shadow: 0 3px 10px -6px rgba(31, 29, 26, .10);
+}
+.azf-ing-card.harmful { border-left-color: #B24C4C; }
+.azf-ing-card.beneficial { border-left-color: #2F8A5B; }
+.azf-ing-name { font-size: 13px; font-weight: 700; color: #1F1D1A; line-height: 1.2; }
+.azf-ing-status { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #6B6762; margin-top: 2px; }
+.azf-ing-card.harmful .azf-ing-status { color: #B24C4C; }
+.azf-ing-card.beneficial .azf-ing-status { color: #2F8A5B; }
+.azf-ing-snippet { font-size: 11px; color: #6B6762; line-height: 1.4; margin-top: 4px; max-height: 2.8em; overflow: hidden; }
+
+/* ---------- Frame: ingredient detail (single ingredient deep dive) ---------- */
+.azf-deep-name { font-size: 22px; font-weight: 800; color: #1F1D1A; padding: 4px 0 4px; line-height: 1.2; }
+.azf-deep-desc { font-size: 12px; color: #6B6762; line-height: 1.5; padding-bottom: 6px; }
+.azf-deep-score-card {
+  background: #fff; border-radius: 14px; padding: 14px;
+  box-shadow: 0 6px 16px -10px rgba(31, 29, 26, .12);
+}
+.azf-deep-score-card.bad { background: #FBEFEF; }
+.azf-deep-score-card.good { background: #EAF5EF; }
+.azf-deep-score-hd { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #6B6762; }
+.azf-deep-score-num { font-size: 36px; font-weight: 900; color: #1F1D1A; margin: 4px 0; line-height: 1; }
+.azf-deep-score-card.bad .azf-deep-score-num { color: #B24C4C; }
+.azf-deep-score-card.good .azf-deep-score-num { color: #2F8A5B; }
+.azf-deep-slider {
+  position: relative; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, #B24C4C 0%, #C08A3E 50%, #2F8A5B 100%);
+  margin: 8px 0 4px;
+}
+.azf-deep-slider-thumb {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; border: 2px solid #1F1D1A;
+}
+.azf-deep-slider-labels {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  font-size: 10px; color: #6B6762; margin-top: 4px;
+}
+.azf-deep-slider-labels span { display: flex; flex-direction: column; }
+.azf-deep-slider-labels span:nth-child(2) { text-align: center; }
+.azf-deep-slider-labels span:last-child { text-align: right; }
+.azf-deep-slider-labels strong { color: #1F1D1A; font-weight: 800; }
+
+.azf-deep-section {
+  background: #fff; border-radius: 12px; padding: 12px;
+  box-shadow: 0 3px 10px -6px rgba(31, 29, 26, .10);
+}
+.azf-deep-section h4 { font-size: 12px; font-weight: 800; color: #1F1D1A; margin: 0 0 4px; text-transform: uppercase; letter-spacing: .06em; }
+.azf-deep-section p { font-size: 12px; color: #1F1D1A; line-height: 1.5; margin: 0; }
+
+/* ---------- Per-frame controls ---------- */
+.azf-controls {
+  position: absolute; top: 10px; right: 10px;
+  display: flex; flex-direction: column; gap: 6px;
+  z-index: 5;
+}
+.azf-dl-btn {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: #1F1D1A; color: #fff; border: 0; cursor: pointer;
+  display: grid; place-items: center;
+  box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .35);
+  transition: transform .15s, filter .15s;
+}
+.azf-dl-btn:hover { transform: translateY(-1px); filter: brightness(1.15); }
+.azf-dl-btn:disabled { opacity: .55; cursor: wait; }
+.azf-dl-btn.busy svg { animation: spin 1s linear infinite; }
+.azf-dl-btn svg { width: 16px; height: 16px; }
+
+.azf-label {
+  position: absolute; bottom: 12px; left: 12px;
+  background: rgba(31, 29, 26, .9); color: #fff;
+  font-size: 10px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; padding: 5px 10px; border-radius: 999px;
+  z-index: 4;
+}
+
+/* ---------- "Not in DB" panel ---------- */
+.az-no-match {
+  background: #fdfaf5; border: 1px solid var(--line);
+  border-radius: 22px; padding: 32px 24px; text-align: center;
+  margin-top: 28px;
+}
+.az-no-match h2 { margin: 0 0 8px; font-size: 22px; font-weight: 800; color: var(--ink); }
+.az-no-match p { margin: 0 auto; max-width: 520px; color: var(--ink-3); font-size: 14px; line-height: 1.55; }
+.az-no-match .photo {
+  margin: 0 auto 18px; width: 200px; aspect-ratio: 1;
+  border-radius: 16px; overflow: hidden; background: #fff;
+  border: 1px solid var(--line);
+}
+.az-no-match .photo img { width: 100%; height: 100%; object-fit: contain; }
+.az-no-match .ocr {
+  margin-top: 14px; font-size: 12px; color: #9B958D; font-style: italic;
+}
+
+/* Tighten on smaller screens — keep frames legible. */
+@media (max-width: 720px) {
+  .az-screens { grid-template-columns: 1fr; }
+  .az-frame { max-width: 360px; margin: 0 auto; }
+  .az-result-hd { grid-template-columns: 64px 1fr; }
+  .az-result-hd .photo { width: 64px; height: 64px; }
+  .az-result-hd .score-pill { grid-column: 1 / -1; justify-self: start; }
+}

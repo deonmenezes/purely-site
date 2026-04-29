@@ -1892,65 +1892,21 @@
   }
 
   /* ===================================================================
-   *  Photo flow — Upload product photo, analyze with ruthless prompt,
-   *  generate 4 Purely mockup screens.
+   *  Photo-flow upload UI moved to /analyze (its own page). This page
+   *  only handles the TikTok-URL flow now. The renderPhotoScreen /
+   *  renderProductResult helpers above are kept dead-code for now
+   *  (no callers) — leaving them in keeps the diff small while the new
+   *  page settles. Unused but harmless.
    * =================================================================== */
   const tabs = document.querySelectorAll('.tt-tab');
-  const photoSection = $('#tt-photo');
-  const photoInput = $('#photo-input');
-  const photoDrop = $('#photo-drop');
-  const photoPreview = $('#photo-preview');
-  const photoThumb = $('#photo-thumb');
-  const ppName = $('#pp-name');
-  const ppSize = $('#pp-size');
-  const ppClear = $('#pp-clear');
-  const ppGo = $('#pp-go');
-
+  const photoInput = null, photoDrop = null, photoSection = null;
+  const photoPreview = null, photoThumb = null;
+  const ppName = null, ppSize = null, ppClear = null, ppGo = null;
   let pickedFile = null;
 
   tabs.forEach((t) => t.addEventListener('click', () => {
     tabs.forEach((x) => x.classList.toggle('active', x === t));
-    const mode = t.dataset.mode;
-    form.hidden = mode !== 'url';
-    photoSection.hidden = mode !== 'photo';
   }));
-
-  function fmtBytes(b) {
-    if (b < 1024) return b + ' B';
-    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
-    return (b / 1024 / 1024).toFixed(1) + ' MB';
-  }
-
-  function setPhoto(file) {
-    if (!file) return;
-    if (!/^image\//.test(file.type)) { showToast('Pick an image file', 'err'); return; }
-    if (file.size > 8 * 1024 * 1024) { showToast('Photo over 8MB — pick a smaller one', 'err'); return; }
-    pickedFile = file;
-    photoThumb.src = URL.createObjectURL(file);
-    ppName.textContent = file.name;
-    ppSize.textContent = fmtBytes(file.size);
-    photoPreview.hidden = false;
-    photoDrop.hidden = true;
-  }
-
-  photoInput.addEventListener('change', (e) => setPhoto(e.target.files[0]));
-  ppClear.addEventListener('click', () => {
-    pickedFile = null;
-    photoPreview.hidden = true;
-    photoDrop.hidden = false;
-    photoInput.value = '';
-  });
-  ['dragenter', 'dragover'].forEach((ev) => photoDrop.addEventListener(ev, (e) => {
-    e.preventDefault(); photoDrop.classList.add('drag');
-  }));
-  ['dragleave', 'drop'].forEach((ev) => photoDrop.addEventListener(ev, (e) => {
-    e.preventDefault(); photoDrop.classList.remove('drag');
-  }));
-  photoDrop.addEventListener('drop', (e) => {
-    if (e.dataTransfer?.files?.length) setPhoto(e.dataTransfer.files[0]);
-  });
-
-  ppGo.addEventListener('click', () => analyzePhoto());
 
   // OCR is now done server-side via gpt-5-nano vision in /api/analyze-product.
   // The client just uploads the photo and POSTs the imageUrl — no Tesseract,

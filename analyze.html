@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TikTok Analyzer — Purely</title>
-  <meta name="description" content="Paste any TikTok and get a full Purely-style breakdown — transcript, products mentioned, health analysis, and AI-generated app mockups." />
+  <title>Product Scanner — Purely</title>
+  <meta name="description" content="Snap any product label and get the real Purely score, ingredients, microplastics risk, and shareable 9:16 screens for your TikToks — pulled straight from the Purely database." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@1,600;1,700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=3" />
   <link rel="stylesheet" href="tiktok.css?v=31" />
+  <link rel="stylesheet" href="analyze.css?v=1" />
   <link rel="icon" href="/assets/purely-logo.webp" />
 </head>
 <body>
@@ -22,8 +23,8 @@
       <nav class="nav-links" aria-label="Primary">
         <a href="/">Home</a>
         <a href="/ideas">Ideas</a>
-        <a href="/analyze">Scanner</a>
-        <a href="/tiktok" class="active">TikTok AI</a>
+        <a href="/analyze" class="active">Scanner</a>
+        <a href="/tiktok">TikTok AI</a>
         <a href="/influencer">Influencers</a>
         <a href="/#faq">FAQ</a>
       </nav>
@@ -37,58 +38,64 @@
     </div>
   </header>
 
-  <main class="tt-page">
+  <main class="tt-page az-page">
     <div class="container">
       <section class="tt-hero">
         <span class="pill">
           <svg viewBox="0 0 24 24"><path d="M12 2l3 6 6 1-4.5 4.5 1 6L12 17l-5.5 2.5 1-6L3 9l6-1 3-6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-          AI-powered TikTok analyzer
+          Real-database product scanner
         </span>
-        <h1 class="tt-title">Analyze any TikTok. Get the <em>Purely</em> truth.</h1>
-        <p class="tt-sub">Paste a TikTok reel — we transcribe it, surface every product mentioned, and render Purely-style screens for each. Want to scan a single product photo instead? <a href="/analyze">Use the dedicated Product Scanner →</a></p>
+        <h1 class="tt-title">Snap any product. Get the <em>real</em> score.</h1>
+        <p class="tt-sub">Photograph any label — we match it against the 430,000-product Purely database and hand you 9:16 screens you can drop straight into your TikTok or Reel.</p>
 
-        <form class="tt-form" id="tt-form" data-mode="url">
-          <div class="tt-input">
-            <svg viewBox="0 0 24 24"><path d="M14 3a5 5 0 0 1 5 5v8a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V8a5 5 0 0 1 5-5h4z" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M9 12a3 3 0 0 0 3 3 3 3 0 0 0 3-3V4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
-            <input id="tt-url" type="url" placeholder="https://www.tiktok.com/@oasis.app/video/..." autofocus />
-            <button type="button" class="paste-btn" id="paste-btn" title="Paste from clipboard">
-              <svg viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="18" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+        <div class="tt-photo az-photo">
+          <input type="file" id="photo-input" accept="image/*" hidden />
+          <label for="photo-input" class="photo-drop" id="photo-drop">
+            <div class="pd-ico">
+              <svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#eaf5ed"/><path d="M16 30l5-5 4 4 7-8 6 6M14 16h6M16 14v4" stroke="#2f7a47" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </div>
+            <div class="pd-text">
+              <strong>Take or upload a product photo</strong>
+              <span>JPEG, PNG, WebP · up to 8 MB · clear shot of the label works best</span>
+            </div>
+            <div class="pd-cta">Choose photo</div>
+          </label>
+          <div class="photo-preview" id="photo-preview" hidden>
+            <img id="photo-thumb" alt="" />
+            <div class="pp-meta">
+              <strong id="pp-name">photo.jpg</strong>
+              <span id="pp-size"></span>
+            </div>
+            <button type="button" class="r-action" id="pp-clear">Clear</button>
+            <button type="button" class="tt-go" id="pp-go">
+              <span>Analyze photo</span>
+              <svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
             </button>
           </div>
-          <button type="submit" class="tt-go" id="tt-go">
-            <span class="go-label">Analyze</span>
-            <svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-          </button>
-        </form>
+        </div>
 
         <div class="tt-helpers">
-          <button class="link-btn" data-sample="https://www.tiktok.com/@oasis.app/video/7632415840326962462">Try sample reel</button>
-          <span class="dot">·</span>
           <button class="link-btn" id="refresh-toggle" title="Skip cache">Force refresh</button>
         </div>
       </section>
 
-      <!-- Progress + status -->
       <section class="tt-progress" id="tt-progress" hidden>
         <div class="tp-row">
-          <div class="tp-step" data-step="scrape"><span class="tp-num">1</span><span class="tp-label">Scrape TikTok</span></div>
-          <div class="tp-step" data-step="transcribe"><span class="tp-num">2</span><span class="tp-label">Transcribe</span></div>
-          <div class="tp-step" data-step="extract"><span class="tp-num">3</span><span class="tp-label">Identify products</span></div>
-          <div class="tp-step" data-step="images"><span class="tp-num">4</span><span class="tp-label">Render Purely screens</span></div>
+          <div class="tp-step" data-step="upload"><span class="tp-num">1</span><span class="tp-label">Upload photo</span></div>
+          <div class="tp-step" data-step="ocr"><span class="tp-num">2</span><span class="tp-label">Read the label</span></div>
+          <div class="tp-step" data-step="match"><span class="tp-num">3</span><span class="tp-label">Match in database</span></div>
+          <div class="tp-step" data-step="render"><span class="tp-num">4</span><span class="tp-label">Render screens</span></div>
         </div>
         <div class="tp-bar"><div class="tp-fill" id="tp-fill"></div></div>
         <div class="tp-status" id="tp-status">Ready</div>
       </section>
 
-      <!-- Error -->
       <div id="tt-error" class="tt-error" hidden></div>
 
-      <!-- Results -->
       <section class="tt-results" id="tt-results" hidden></section>
     </div>
   </main>
 
-  <!-- Toast -->
   <div class="toast" id="toast" hidden></div>
 
   <footer class="footer">
@@ -125,6 +132,6 @@
     </div>
   </footer>
 
-  <script src="tiktok.js?v=38"></script>
+  <script src="analyze.js?v=1"></script>
 </body>
 </html>
