@@ -38,97 +38,35 @@
     </div>
   </header>
 
-  <!-- TOP STRIP: HORIZONTAL UPLOADER -->
+  <!-- This page used to host an open community feed for screen recordings
+       and screenshots. That feature is moving inside the Purely iOS app
+       so consumers see what people are scanning in a live in-app feed
+       (more relevant audience, no friction, no public web URL needed).
+       Creators on this site should head to /analyze for the screenshot
+       generator and /tiktok for the AI breakdown tool. -->
   <section class="inf-hero">
     <div class="container">
       <div class="inf-heading compact">
         <h1 class="inf-title sm">Share your <em>Purely</em> moment</h1>
-        <p class="inf-sub">Drop a screen recording or screenshot and we'll showcase it below. No sign-up needed.</p>
+        <p class="inf-sub">The community feed is moving inside the Purely app — that's where consumers can watch live what others are scanning.</p>
       </div>
 
-      <div class="up-strip" id="uploader">
-        <input type="file" id="file-input" accept="image/*,video/*" multiple hidden />
-        <input type="hidden" id="u-caption" />
-
-        <div class="us-field">
-          <svg viewBox="0 0 24 24" class="us-ico"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4 0-8 2-8 6v2h16v-2c0-4-4-6-8-6z" fill="currentColor"/></svg>
-          <input id="u-name" type="text" placeholder="Your name" maxlength="60" />
+      <div style="max-width:720px;margin:36px auto 0;background:#fdfaf5;border:1px solid var(--line);border-radius:22px;padding:32px;display:flex;flex-direction:column;gap:18px;align-items:flex-start">
+        <span style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:#eaf5ed;color:#2f7a47;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase">Coming inside the app</span>
+        <h2 style="margin:0;font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-.01em;line-height:1.2">A live feed of what real people are scanning</h2>
+        <p style="margin:0;color:var(--ink-3);font-size:15px;line-height:1.55">
+          Watching strangers test products belongs in the consumer app, not on a creator marketing page. The recordings and screenshot wall that used to live here are being rebuilt as an in-app community tab inside the Purely iOS app.
+        </p>
+        <p style="margin:0;color:var(--ink-3);font-size:15px;line-height:1.55">
+          Creators — the screenshot generator you actually need is on <a href="/analyze" style="color:var(--green-700);font-weight:700;text-decoration:none">the Scanner page</a>. The TikTok breakdown tool is on <a href="/tiktok" style="color:var(--green-700);font-weight:700;text-decoration:none">TikTok AI</a>.
+        </p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">
+          <a href="/analyze" class="btn btn-app" style="background:linear-gradient(180deg,var(--green-700),var(--green-800));color:#fff;text-decoration:none">Open the scanner</a>
+          <a href="https://apps.apple.com/us/app/purely-find-whats-healthy/id6758014006" target="_blank" rel="noopener" class="btn" style="background:#1F1D1A;color:#fff;text-decoration:none">Download Purely on iOS</a>
         </div>
-
-        <div class="us-field">
-          <svg viewBox="0 0 24 24" class="us-ico"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 4a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 14a8 8 0 0 1-6.3-3.1c.6-2.2 4.2-3.4 6.3-3.4s5.7 1.2 6.3 3.4A8 8 0 0 1 12 20z" fill="currentColor"/></svg>
-          <input id="u-handle" type="text" placeholder="@handle (optional)" maxlength="40" />
-        </div>
-
-        <button type="button" class="us-pick" id="pick-btn">
-          <svg viewBox="0 0 24 24"><path d="M12 4v16m-8-8h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-          Choose files
-        </button>
-
-        <button type="button" class="us-submit" id="submit-btn" disabled>
-          <span class="sb-ico">
-            <svg viewBox="0 0 24 24"><path d="M12 19V5m-7 7l7-7 7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-          </span>
-          Upload <span id="sb-count"></span>
-        </button>
-      </div>
-
-      <div class="us-hint">Drag files anywhere on this page · up to 50 MB · MP4, MOV, WEBM, PNG, JPG, GIF</div>
-
-      <div class="queue" id="queue" hidden></div>
-    </div>
-  </section>
-
-  <!-- RECENT UPLOADS ROW (TOP) -->
-  <section class="recent-row">
-    <div class="container">
-      <div class="row-head">
-        <div>
-          <div class="eyebrow">LATEST DROPS</div>
-          <h2 class="section-title left">Fresh from the community</h2>
-        </div>
-        <button class="refresh-btn" id="refresh-btn" title="Refresh">
-          <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 4v5h-5M20 12a8 8 0 0 1-14 5.3M4 20v-5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
-          Refresh
-        </button>
-      </div>
-      <div class="recent-scroll" id="recent-grid">
-        <div class="loader-card"><div class="loader-bar"></div>Loading latest uploads…</div>
       </div>
     </div>
   </section>
-
-  <!-- SCREEN RECORDINGS + SCREENSHOTS (BOTTOM) -->
-  <section class="gallery">
-    <div class="container">
-      <!-- Videos -->
-      <div class="gal-head">
-        <div class="eyebrow">SCREEN RECORDINGS</div>
-        <h2 class="section-title left">Watch the app in motion</h2>
-      </div>
-      <div class="video-grid" id="video-grid">
-        <div class="empty-state">No videos yet. Be the first to share!</div>
-      </div>
-
-      <!-- Screenshots -->
-      <div class="gal-head" style="margin-top:60px">
-        <div class="eyebrow">SCREENSHOTS</div>
-        <h2 class="section-title left">Snapshots from the community</h2>
-      </div>
-      <div class="shot-grid" id="shot-grid">
-        <div class="empty-state">No screenshots yet. Be the first to share!</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Lightbox -->
-  <div class="lightbox" id="lightbox" hidden>
-    <button class="lb-close" id="lb-close" aria-label="Close">×</button>
-    <div class="lb-body" id="lb-body"></div>
-  </div>
-
-  <!-- Toast -->
-  <div class="toast" id="toast" hidden></div>
 
   <!-- FOOTER -->
   <footer class="footer">
@@ -164,6 +102,8 @@
     </div>
   </footer>
 
-  <script type="module" src="influencer.js?v=3"></script>
+  <!-- Community-feed JS removed — page is now a static "moving inside the app" notice. -->
+  <!-- <script type="module" src="influencer.js?v=3"></script> -->
+
 </body>
 </html>

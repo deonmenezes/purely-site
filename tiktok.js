@@ -246,12 +246,16 @@
 
   // Mirror of lib/scoreColor.ts gradient stops — keeps the ring color in
   // perfect sync with what the user sees in the actual app.
+  // Pushed the green band up — anything <70 reads as orange/amber instead of
+  // lime so a 62 score stops looking healthy. Match the mobile app's stricter
+  // gradient where green is reserved for genuinely-good products (≥75).
   const SCORE_STOPS = [
     { s: 0,   h: 0,   sat: 80, l: 48 },
-    { s: 25,  h: 12,  sat: 82, l: 52 },
-    { s: 50,  h: 38,  sat: 88, l: 52 },
-    { s: 70,  h: 80,  sat: 70, l: 45 },
-    { s: 85,  h: 130, sat: 65, l: 40 },
+    { s: 30,  h: 8,   sat: 82, l: 52 },
+    { s: 55,  h: 28,  sat: 88, l: 52 },
+    { s: 70,  h: 38,  sat: 88, l: 50 },
+    { s: 80,  h: 80,  sat: 70, l: 45 },
+    { s: 90,  h: 130, sat: 65, l: 40 },
     { s: 100, h: 145, sat: 72, l: 36 }
   ];
   function appScoreColor(score) {
@@ -543,29 +547,34 @@
     const PA_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l10 17H2L12 3zm0 7v5m0 3v.01" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     const PA_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/></svg>';
 
-    // Build the compact substance rows shown under the score (top 6 findings).
-    const paRowsHtml = (findings.length ? findings.slice(0, 6) : []).map((f, idx) => {
-      const dotClass = f.kind === 'bad' ? 'bad' : f.kind === 'good' ? 'good' : 'neutral';
-      // Prefer the AI-supplied row label (from uiSummary.topAttributes); fall
-      // back to keyword-derived labels (Flour quality, Sugar, Microplastics…).
-      const lbl = (f.label && String(f.label).trim()) ? f.label : paQualityLabel(f.name);
-      const isWarnIcon = /sugar|salt|sodium|preserv|color|microplastic|metal|bpa|phthal/.test(String(f.name + ' ' + lbl).toLowerCase()) && f.kind === 'bad';
-      const ico = isWarnIcon ? PA_WARN : PA_LEAF;
-      const valExtra = f.amount ? ` (${escapeHtml(f.amount)})` : (f.pill && /top \d/i.test(f.pill) ? ` (${escapeHtml(f.pill)})` : '');
-      // Row right-column priority:
-      // 1. f.value (AI's pre-formatted value from uiSummary.topAttributes)
-      // 2. f.name (substance name from contaminants/harmful arrays)
-      // Avoid showing the same string twice when label and name match.
-      const valueText = (f.value && String(f.value).trim()) ? f.value
-                       : (lbl !== f.name ? f.name : (f.amount || f.pill || ''));
-      return `
-        <div class="pa-stat-row" data-idx="${idx}">
-          <span class="pa-stat-ico">${ico}</span>
-          <span class="pa-stat-lbl">${escapeHtml(lbl)}</span>
-          <span class="pa-stat-val">${escapeHtml(valueText || '—')}${valExtra}</span>
-          <span class="pa-stat-dot ${dotClass}"></span>
-        </div>`;
-    }).join('') || `<div class="pa-stat-empty">No specific concerns extracted from this product.</div>`;
+    // Mobile-app parity: collapse the score panel to TWO summary rows —
+    // "Harmful substances (N)" + "Beneficial substances (N)" — instead of the
+    // long "Quality / Quality / Quality" stack. Per-ingredient detail still
+    // opens by tapping a card in the "What's inside" list below.
+    const mpStr = String(microplastics || '').toLowerCase();
+    const mpBad = /detect|likely|present|risk/.test(mpStr);
+    const mpGood = /none|no detect|not detect|absent/.test(mpStr);
+    const paRowsHtml = `
+      <div class="pa-stat-row pa-stat-row-summary" data-summary="harmful">
+        <span class="pa-stat-ico">${PA_WARN}</span>
+        <span class="pa-stat-lbl">Harmful substances</span>
+        <span class="pa-stat-val">${harmCount}</span>
+        <span class="pa-stat-dot ${harmCount > 0 ? 'bad' : 'good'}"></span>
+      </div>
+      <div class="pa-stat-row pa-stat-row-summary" data-summary="beneficial">
+        <span class="pa-stat-ico">${PA_LEAF}</span>
+        <span class="pa-stat-lbl">Beneficial substances</span>
+        <span class="pa-stat-val">${benCount}</span>
+        <span class="pa-stat-dot ${benCount > 0 ? 'good' : 'neutral'}"></span>
+      </div>
+      ${microplastics && microplastics !== 'Unknown' ? `
+        <div class="pa-stat-row pa-stat-row-summary" data-summary="microplastics">
+          <span class="pa-stat-ico">${PA_WARN}</span>
+          <span class="pa-stat-lbl">Microplastics</span>
+          <span class="pa-stat-val">${escapeHtml(String(microplastics))}</span>
+          <span class="pa-stat-dot ${mpBad ? 'bad' : mpGood ? 'good' : 'neutral'}"></span>
+        </div>` : ''}
+    `;
 
     // Score ring with a small dot at the end-of-arc position. For a score
     // of 1, the dot sits just past 12 o'clock — visually matches the real
@@ -598,9 +607,14 @@
       : null;
     const insideListHtml = ingsForList && ingsForList.length
       ? ingsForList.map((i, idx) => {
-          const score = Number.isFinite(i.score) ? i.score : (i.severity_score > 0 ? -i.severity_score : i.bonus_score || 0);
-          const scoreLabel = score > 0 ? `+${score}` : `${score}`;
-          const scoreCls = score < 0 ? 'bad' : score > 0 ? 'good' : 'neutral';
+          const scoreCls = i.status === 'harmful' ? 'bad' : i.status === 'beneficial' ? 'good' : 'neutral';
+          // Mobile-app parity: show the status word (Harmful / Beneficial /
+          // Neutral) rather than a cryptic "-2" / "+3" number — the score
+          // detail (with the −5..5 slider) lives on the ingredient detail
+          // screen, not as a tiny chip.
+          const scoreLabel = i.status === 'harmful' ? 'Harmful'
+                            : i.status === 'beneficial' ? 'Beneficial'
+                            : 'Neutral';
           return `
             <div class="pa-inside-card ${i.status === 'harmful' ? 'bad' : i.status === 'beneficial' ? 'good' : 'neutral'}" data-ing-idx="${idx}">
               <div class="pa-inside-card-head">
@@ -799,7 +813,9 @@
     // Tap any substance row → open the ingredient-detail screen with the
     // -5..5 score slider, expandable Risks / Benefits / Legal limit / Health
     // guideline / References sections, and product attribution footer.
-    tile.querySelectorAll('.pa-stat-row').forEach((row, idx) => {
+    // Summary rows (Harmful / Beneficial / Microplastics counts) are not
+    // tappable — per-ingredient detail comes from the .pa-inside-card list.
+    tile.querySelectorAll('.pa-stat-row:not(.pa-stat-row-summary)').forEach((row, idx) => {
       row.style.cursor = 'pointer';
       row.addEventListener('click', () => {
         const f = findings[idx];
@@ -869,9 +885,28 @@
           });
         });
       } else {
+        // Legacy findings path — no per-finding pa-stat-rows to proxy
+        // through anymore (those got consolidated into 2-3 summary rows).
+        // Open the ingredient detail directly from the findings array.
         const idx = Number(card.dataset.findingIdx);
-        const row = tile.querySelectorAll('.pa-stat-row')[idx];
-        if (row) card.addEventListener('click', () => row.click());
+        const f = findings[idx];
+        if (!f) return;
+        card.addEventListener('click', () => {
+          const status = f.kind === 'bad' ? 'harmful' : f.kind === 'good' ? 'beneficial' : 'neutral';
+          openIngredientDetail({
+            name: f.name,
+            description: f.body || '',
+            status,
+            score: status === 'harmful' ? -4 : status === 'beneficial' ? 4 : 0,
+            risks: status === 'harmful' ? (f.body || '') : null,
+            benefits: status === 'beneficial' ? (f.body || '') : null,
+            legalLimit: f.limit ? `${f.limit}${f.limitSource ? ` (${f.limitSource})` : ''}` : null,
+            healthGuideline: null,
+            references: f.source || null,
+            productName: name,
+            productScore: safeScore
+          });
+        });
       }
     });
 

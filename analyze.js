@@ -399,35 +399,36 @@
 
     const screens = [];
 
-    /* Screen 1: Score Result — top of the live preview, unchanged.
-     * Includes status bar, header pill, hero card, name + brand + tags,
-     * score ring, and the "Scored by Purely" footer. Pure DB data. */
+    /* Screen 1: Score Result — header pill + hero + info (name/brand/tags +
+     * score ring) + footer. NO status bar, NO mini product header — matches
+     * the real Purely-app screenshot exactly. */
     screens.push({
       label: 'Score result',
       filename: `purely-${slug}-score.png`,
-      build: () => composeScreen(paScreen, ['.pa-status', '.pa-hdr', '.pa-hero', '.pa-info', '.pa-foot'])
+      build: () => composeScreen(paScreen, ['.pa-hdr', '.pa-hero', '.pa-info', '.pa-foot'])
     });
 
-    /* Screen 2: Top concerns — clones the .pa-stat-rows block (substance
-     * findings with severity dots). Adds a mini product header so the
-     * screen has identity when viewed standalone. */
+    /* Screen 2: Top concerns — the consolidated Harmful / Beneficial /
+     * Microplastics summary rows. Same simplified rows the live preview
+     * shows now. */
     const statRows = paScreen.querySelector('.pa-stat-rows');
     if (statRows && statRows.children.length) {
       screens.push({
         label: 'Top concerns',
         filename: `purely-${slug}-concerns.png`,
-        build: () => composeScreenWithHeader(paScreen, [statRows], 'Top concerns', { name, brand, score, ringColor })
+        build: () => composeScreenWithHeader(paScreen, [statRows], 'Top concerns')
       });
     }
 
     /* Screen 3: What's inside — clones the full .pa-inside block (every
-     * ingredient with status border, severity score color, description). */
+     * ingredient with status border, status word chip, description).
+     * Pagination caps at 4 cards/screen and any partial card that would
+     * overflow is dropped from that page rather than being half-rendered. */
     const insideBlock = paScreen.querySelector('.pa-inside');
     if (insideBlock) {
       const list = insideBlock.querySelector('.pa-inside-list');
       const cards = list ? Array.from(list.children) : [];
-      /* Paginate at 5 cards/screen so each fits 9:16 cleanly. */
-      const PAGE = 5;
+      const PAGE = 4;
       const pageCount = Math.max(1, Math.ceil(cards.length / PAGE));
       for (let pi = 0; pi < pageCount; pi++) {
         const slice = cards.slice(pi * PAGE, (pi + 1) * PAGE);
@@ -435,7 +436,7 @@
         screens.push({
           label: pageCount > 1 ? `Inside ${pi + 1}/${pageCount}` : "What's inside",
           filename: `purely-${slug}-inside${suffix}.png`,
-          build: () => composeInsideScreen(paScreen, insideBlock, slice, { name, brand, score, ringColor })
+          build: () => composeInsideScreen(paScreen, insideBlock, slice)
         });
       }
     }
@@ -446,7 +447,7 @@
       screens.push({
         label: 'Nutrition Facts',
         filename: `purely-${slug}-nutrition.png`,
-        build: () => composeScreenWithHeader(paScreen, [nutSection], 'Nutrition Facts', { name, brand, score, ringColor })
+        build: () => composeScreenWithHeader(paScreen, [nutSection], 'Nutrition Facts')
       });
     }
 
@@ -456,7 +457,7 @@
       screens.push({
         label: 'Better picks',
         filename: `purely-${slug}-alternatives.png`,
-        build: () => composeScreenWithHeader(paScreen, [altSection], 'Better picks', { name, brand, score, ringColor })
+        build: () => composeScreenWithHeader(paScreen, [altSection], 'Better picks')
       });
     }
 
@@ -534,7 +535,9 @@
 
   /* Helper: given the live .pa-screen and a list of section selectors,
    * build a new .pa-screen-export DOM whose children are clones of the
-   * matched sections, in order. Same CSS classes → same app styling. */
+   * matched sections, in order. Same CSS classes → same app styling.
+   * Status bar (time/wifi/battery) is intentionally never included so the
+   * downloaded PNG looks like a clean Purely-app card, not an iOS shot. */
   function composeScreen(paScreen, selectors) {
     const out = makeAppScreenWrapper();
     selectors.forEach((sel) => {
@@ -544,14 +547,14 @@
     return out;
   }
 
-  /* Same as composeScreen but with a mini product header (small thumb +
-   * name + score chip) prepended below the status bar. Used for screens
-   * where the hero/score wouldn't be visible otherwise. */
-  function composeScreenWithHeader(paScreen, sectionEls, title, headerOpts) {
+  /* Generic share screen — header pill ("Purely App") + optional section
+   * title + the cloned content section + footer. No status bar, no product
+   * mini-header — the live .pa-hdr is the entire identity (just like the
+   * real app's screen). */
+  function composeScreenWithHeader(paScreen, sectionEls, title) {
     const out = makeAppScreenWrapper();
-    const status = paScreen.querySelector('.pa-status');
-    if (status) out.appendChild(status.cloneNode(true));
-    out.appendChild(buildMiniHeader(paScreen, headerOpts));
+    const hdr = paScreen.querySelector('.pa-hdr');
+    if (hdr) out.appendChild(hdr.cloneNode(true));
     if (title) {
       const t = document.createElement('div');
       t.className = 'az-share-screen-title';
@@ -559,22 +562,19 @@
       out.appendChild(t);
     }
     sectionEls.forEach((el) => { if (el) out.appendChild(el.cloneNode(true)); });
-    /* Trailing footer for visual closure. */
     const foot = paScreen.querySelector('.pa-foot');
     if (foot) out.appendChild(foot.cloneNode(true));
     return out;
   }
 
-  /* Like composeScreenWithHeader but rebuilds the .pa-inside block from
-   * a sliced list of cards (so we can paginate long ingredient lists). */
-  function composeInsideScreen(paScreen, insideBlock, cards, headerOpts) {
+  /* "What's inside" share screen with a sliced ingredient list. Same clean
+   * header as composeScreenWithHeader, then the .pa-inside section's title
+   * row + a fresh list of just the requested cards. */
+  function composeInsideScreen(paScreen, insideBlock, cards) {
     const out = makeAppScreenWrapper();
-    const status = paScreen.querySelector('.pa-status');
-    if (status) out.appendChild(status.cloneNode(true));
-    out.appendChild(buildMiniHeader(paScreen, headerOpts));
+    const hdr = paScreen.querySelector('.pa-hdr');
+    if (hdr) out.appendChild(hdr.cloneNode(true));
 
-    /* Clone the .pa-inside header (h3 + Purely App pill) — drop the list.
-     * Then re-attach a fresh list with only the requested cards. */
     const insideClone = insideBlock.cloneNode(true);
     const list = insideClone.querySelector('.pa-inside-list');
     if (list) {
@@ -583,38 +583,6 @@
     }
     out.appendChild(insideClone);
     return out;
-  }
-
-  /* Build a small product-header strip (thumb + name + brand + score chip)
-   * using inline styles so it doesn't depend on extra CSS. Uses the same
-   * fonts/colors as the rest of the .pa-screen so it blends in. */
-  function buildMiniHeader(paScreen, { name, brand, score, ringColor }) {
-    const heroImg = paScreen.querySelector('.pa-hero-card img');
-    const imgSrc = heroImg ? heroImg.getAttribute('src') : '';
-    const verdict = window.PurelyApp?.scoreLabel?.(score) || '';
-    const div = document.createElement('div');
-    div.className = 'az-share-mini-hdr';
-    div.style.cssText = `
-      display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;
-      padding:8px 22px 14px;`;
-    div.innerHTML = `
-      <div style="width:52px;height:52px;background:#fff;border-radius:14px;border:1px solid #E3E0DA;
-                  display:grid;place-items:center;padding:6px;overflow:hidden">
-        ${imgSrc
-          ? `<img src="${escapeHtml(imgSrc)}" alt="" crossorigin="anonymous"
-                  style="width:100%;height:100%;object-fit:contain;display:block">`
-          : `<span style="font-weight:800;color:${ringColor};font-size:20px">${escapeHtml((brand || name || '?').charAt(0).toUpperCase())}</span>`}
-      </div>
-      <div style="min-width:0">
-        <div style="font-size:16px;font-weight:800;color:#1F1D1A;letter-spacing:-.01em;line-height:1.2;
-                    overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(name)}</div>
-        ${brand ? `<div style="font-size:13px;color:#9B958D;font-weight:500;margin-top:2px">${escapeHtml(brand)}</div>` : ''}
-      </div>
-      <div style="background:${ringColor};color:#fff;border-radius:999px;padding:7px 14px;
-                  font-size:13px;font-weight:800;letter-spacing:-.01em;white-space:nowrap">
-        ${score} ${verdict ? `<span style="font-weight:600;opacity:.92;margin-left:4px">${escapeHtml(verdict)}</span>` : ''}
-      </div>`;
-    return div;
   }
 
   function makeAppScreenWrapper() {
@@ -644,6 +612,11 @@
    * of its offscreen wrapper, add an explicit 9:16 size, and return it. */
   function buildIngredientShareScreen(ing, productName, productScore) {
     if (!window.PurelyApp?.buildIngredientScreenOffscreen) return null;
+    /* Pass empty strings for legal/guideline/refs so the builder still
+     * scaffolds those sections — we then strip them from the DOM below.
+     * Per the brief: "cut it off right after benefits" — the share PNG
+     * should end at the Benefits section so the screen looks intentional
+     * instead of half-cut. */
     const screen = window.PurelyApp.buildIngredientScreenOffscreen({
       name: ing.name,
       description: ing.description,
@@ -651,15 +624,18 @@
       score: ing.score,
       risks: ing.risks || (ing.status === 'harmful' ? ing.description : ''),
       benefits: ing.benefits || (ing.status === 'beneficial' ? ing.description : ''),
-      legalLimit: ing.legal_limit || '',
-      healthGuideline: ing.health_guideline || '',
-      references: ing.sources || '',
+      legalLimit: '',
+      healthGuideline: '',
+      references: '',
       productName, productScore
     });
     if (!screen) return null;
-    /* The builder appends the .ing-screen to a hidden offscreen wrap on
-     * document.body. Move the screen out of that wrap so we can drop it
-     * into our visible thumbnail card. */
+    /* Drop the legal-limit / health-guideline / references accordions so
+     * the screen clean-cuts after Benefits — no "No data available" stubs. */
+    ['legal', 'guideline', 'refs'].forEach((key) => {
+      const el = screen.querySelector(`.ing-accord[data-key="${key}"]`);
+      if (el) el.remove();
+    });
     const oldWrap = screen.parentElement;
     screen.style.cssText = 'width:420px;height:747px;background:#F7F5F0;border-radius:0;overflow:hidden';
     if (oldWrap && oldWrap.parentNode === document.body) oldWrap.remove();
