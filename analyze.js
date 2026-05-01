@@ -315,8 +315,8 @@
     results.innerHTML = `
       <div class="az-result">
         ${headHtml}
-        ${previewHtml}
         ${galleryHtml}
+        ${previewHtml}
       </div>`;
 
     /* ---------- Render the live preview ---------- */
