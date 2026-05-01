@@ -538,30 +538,28 @@
   }
 
   /* Combined Score result + Top concerns screen — header pill, hero, info
-   * (name/brand/tags + score ring), the harmful/beneficial/microplastics
-   * stat rows under a small "Top concerns" heading, then footer. The stat
-   * rows are wrapped so we can give them a section title without altering
-   * the live preview. */
+   * (name/brand/tags + score ring), then the harmful/beneficial/microplastics
+   * stat rows directly under the info (no extra heading — matches the live
+   * app where these rows sit inline with the product info). The wrapper
+   * uses flex column layout so the "Scored by Purely" footer pins to the
+   * bottom even if the content stack is shorter than 747px. */
   function composeScoreScreen(paScreen, statRows) {
     const out = makeAppScreenWrapper();
+    out.style.display = 'flex';
+    out.style.flexDirection = 'column';
     ['.pa-hdr', '.pa-hero', '.pa-info'].forEach((sel) => {
       const el = paScreen.querySelector(sel);
       if (el) out.appendChild(el.cloneNode(true));
     });
     if (statRows && statRows.children.length) {
-      const block = document.createElement('div');
-      block.className = 'az-share-stats-block';
-      block.style.cssText = 'padding:8px 18px 0';
-      const title = document.createElement('div');
-      title.className = 'az-share-screen-title';
-      title.textContent = 'Top concerns';
-      title.style.cssText = 'font-size:15px;font-weight:700;margin:0 0 8px;color:#1c1c1c';
-      block.appendChild(title);
-      block.appendChild(statRows.cloneNode(true));
-      out.appendChild(block);
+      out.appendChild(statRows.cloneNode(true));
     }
     const foot = paScreen.querySelector('.pa-foot');
-    if (foot) out.appendChild(foot.cloneNode(true));
+    if (foot) {
+      const footClone = foot.cloneNode(true);
+      footClone.style.marginTop = 'auto';
+      out.appendChild(footClone);
+    }
     return out;
   }
 
