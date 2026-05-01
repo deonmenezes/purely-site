@@ -539,14 +539,13 @@
 
   /* Combined Score result + Top concerns screen — header pill, hero, info
    * (name/brand/tags + score ring), then the harmful/beneficial/microplastics
-   * stat rows directly under the info (no extra heading — matches the live
-   * app where these rows sit inline with the product info). The wrapper
-   * uses flex column layout so the "Scored by Purely" footer pins to the
-   * bottom even if the content stack is shorter than 747px. */
+   * stat rows directly under the info, then the "Scored by Purely" footer
+   * sitting right after the rows. No spacer push — letting the foot float
+   * to the bottom created a huge dead band that looked nothing like the
+   * real app, where the footer hugs the last content row. The empty
+   * background below the footer just shows the canvas color. */
   function composeScoreScreen(paScreen, statRows) {
     const out = makeAppScreenWrapper();
-    out.style.display = 'flex';
-    out.style.flexDirection = 'column';
     ['.pa-hdr', '.pa-hero', '.pa-info'].forEach((sel) => {
       const el = paScreen.querySelector(sel);
       if (el) out.appendChild(el.cloneNode(true));
@@ -555,11 +554,7 @@
       out.appendChild(statRows.cloneNode(true));
     }
     const foot = paScreen.querySelector('.pa-foot');
-    if (foot) {
-      const footClone = foot.cloneNode(true);
-      footClone.style.marginTop = 'auto';
-      out.appendChild(footClone);
-    }
+    if (foot) out.appendChild(foot.cloneNode(true));
     return out;
   }
 
