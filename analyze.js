@@ -399,26 +399,16 @@
 
     const screens = [];
 
-    /* Screen 1: Score Result — header pill + hero + info (name/brand/tags +
-     * score ring) + footer. NO status bar, NO mini product header — matches
-     * the real Purely-app screenshot exactly. */
+    /* Screen 1: Score Result + Top concerns — header pill + hero + info
+     * (name/brand/tags + score ring) + the consolidated Harmful/Beneficial/
+     * Microplastics rows + footer. One combined frame so the share screen
+     * carries both the headline score and the at-a-glance breakdown. */
+    const statRows = paScreen.querySelector('.pa-stat-rows');
     screens.push({
       label: 'Score result',
       filename: `purely-${slug}-score.png`,
-      build: () => composeScreen(paScreen, ['.pa-hdr', '.pa-hero', '.pa-info', '.pa-foot'])
+      build: () => composeScoreScreen(paScreen, statRows)
     });
-
-    /* Screen 2: Top concerns — the consolidated Harmful / Beneficial /
-     * Microplastics summary rows. Same simplified rows the live preview
-     * shows now. */
-    const statRows = paScreen.querySelector('.pa-stat-rows');
-    if (statRows && statRows.children.length) {
-      screens.push({
-        label: 'Top concerns',
-        filename: `purely-${slug}-concerns.png`,
-        build: () => composeScreenWithHeader(paScreen, [statRows], 'Top concerns')
-      });
-    }
 
     /* Screen 3: What's inside — clones the full .pa-inside block (every
      * ingredient with status border, status word chip, description).
@@ -544,6 +534,34 @@
       const el = paScreen.querySelector(sel);
       if (el) out.appendChild(el.cloneNode(true));
     });
+    return out;
+  }
+
+  /* Combined Score result + Top concerns screen — header pill, hero, info
+   * (name/brand/tags + score ring), the harmful/beneficial/microplastics
+   * stat rows under a small "Top concerns" heading, then footer. The stat
+   * rows are wrapped so we can give them a section title without altering
+   * the live preview. */
+  function composeScoreScreen(paScreen, statRows) {
+    const out = makeAppScreenWrapper();
+    ['.pa-hdr', '.pa-hero', '.pa-info'].forEach((sel) => {
+      const el = paScreen.querySelector(sel);
+      if (el) out.appendChild(el.cloneNode(true));
+    });
+    if (statRows && statRows.children.length) {
+      const block = document.createElement('div');
+      block.className = 'az-share-stats-block';
+      block.style.cssText = 'padding:8px 18px 0';
+      const title = document.createElement('div');
+      title.className = 'az-share-screen-title';
+      title.textContent = 'Top concerns';
+      title.style.cssText = 'font-size:15px;font-weight:700;margin:0 0 8px;color:#1c1c1c';
+      block.appendChild(title);
+      block.appendChild(statRows.cloneNode(true));
+      out.appendChild(block);
+    }
+    const foot = paScreen.querySelector('.pa-foot');
+    if (foot) out.appendChild(foot.cloneNode(true));
     return out;
   }
 
