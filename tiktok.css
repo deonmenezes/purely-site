@@ -1522,6 +1522,8 @@ body.ing-modal-open{overflow:hidden}
   display:flex;flex-direction:column;
   overflow:hidden;
   position:relative;
+  /* Match the native iOS app's font (see .pa-screen). */
+  font-family:'Montserrat','Inter','SF Pro Text',-apple-system,system-ui,sans-serif;
   box-shadow:
     0 0 0 8px #0c0c0e,
     0 0 0 9.5px #2a2a2a,
@@ -1719,7 +1721,11 @@ body.ing-modal-open{overflow:hidden}
   display:flex;flex-direction:column;
   background:#F7F5F0;
   width:100%;height:100%;
-  font-family:'Inter','SF Pro Text',-apple-system,system-ui,sans-serif;
+  /* Match the native iOS app — it ships @expo-google-fonts/montserrat
+   * at 400/500/600/700 and the web preview was rendering at Inter 800
+   * which read as visibly heavier. Falls back to Inter on platforms
+   * where the Google font hasn't loaded yet. */
+  font-family:'Montserrat','Inter','SF Pro Text',-apple-system,system-ui,sans-serif;
   color:#1F1D1A;
   overflow-y:auto;
 }
@@ -1784,7 +1790,7 @@ body.ing-modal-open{overflow:hidden}
 }
 .pa-info-left{min-width:0}
 .pa-name{
-  font-size:24px;font-weight:800;color:#1F1D1A;
+  font-size:24px;font-weight:700;color:#1F1D1A;
   letter-spacing:-.02em;line-height:1.12;margin-bottom:6px;
   display:inline-flex;flex-wrap:wrap;align-items:flex-start;gap:6px;
 }
@@ -1813,7 +1819,7 @@ body.ing-modal-open{overflow:hidden}
 .pa-score-svg{position:absolute;inset:0;width:100%;height:100%}
 .pa-score-text{position:relative;text-align:center;color:var(--ring,#1F1D1A)}
 .pa-score-num{
-  font-size:18px;font-weight:800;color:var(--ring);
+  font-size:18px;font-weight:700;color:var(--ring);
   letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1;
 }
 .pa-score-lbl{
