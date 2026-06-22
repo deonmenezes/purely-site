@@ -370,8 +370,11 @@ em{font-family:'Playfair Display',serif;font-style:italic;font-weight:700;color:
 .cta h2{font-size:clamp(26px,3vw,38px);margin:0 0 10px;letter-spacing:-.02em}
 .cta p{opacity:.9;margin:0 0 24px}
 
-/* ---------- FOOTER ---------- */
-.footer{padding:60px 0 30px;background:#0c1d14;color:#c8d6cc}
+/* ---------- FOOTER ----------
+ * Pad the bottom past iOS Safari's home-indicator / URL-bar safe area so
+ * footer copy (and the preceding "Purely App" share-pill on /analyze)
+ * never gets blurred behind the dynamic browser chrome. */
+.footer{padding:60px 0 calc(30px + env(safe-area-inset-bottom, 0px));background:#0c1d14;color:#c8d6cc}
 .foot-grid{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:30px}
 .logo-foot .logo-word{color:#fff}
 .foot-copy{color:#8ca497;margin-top:10px;font-size:14px}

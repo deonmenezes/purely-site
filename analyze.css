@@ -6,7 +6,16 @@
  *  instead of vertical slices of a single long page.
  * ========================================================================== */
 
-.az-page { padding: 60px 0 100px; }
+/* Bottom padding has to clear iOS Safari's dynamic URL bar (~88px on
+ * iPhone with the bar visible) PLUS the home-indicator inset, otherwise
+ * the last share-frame's "Purely App" pill / footer gets visually clipped
+ * and the address-bar haze blurs whatever sits underneath it. */
+.az-page {
+  padding: 60px 0 calc(120px + env(safe-area-inset-bottom, 0px));
+  /* Stop iOS Safari from auto-hiding the bar over our content — give the
+   * scroll surface room to settle before the URL bar reappears. */
+  scroll-padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+}
 
 /* ---------- Result wrapper ---------- */
 .az-result {
