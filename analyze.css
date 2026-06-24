@@ -383,6 +383,140 @@
 .az-share-render .pa-screen img,
 .az-share-render .ing-screen img { max-width: 100%; }
 
+/* ============================================================
+ *  EXPORT-ONLY ALIGNMENT FIXES
+ *  Founder report (May 7): "fruitsnacks not centered in the
+ *  bubble. Same with health report and the checkmark is off
+ *  center. Same with the warning emojis and the green dots.
+ *  Purely App at the top is off center."
+ *
+ *  Root cause: html2canvas v1.4.x lays out flex/grid children on
+ *  baseline rather than the computed flex-cross axis when text
+ *  and inline-block icons share a line. Live DOM uses
+ *  `align-items:center` correctly; the off-screen capture clone
+ *  reads it as baseline. Fix is to give chip / pill / row text
+ *  an explicit line-height that matches the icon box, force
+ *  inline children to display:block + vertical-align:middle, and
+ *  pin the substance-row dot to its own line-box with an
+ *  explicit cell height. These rules are scoped to the export
+ *  clone (.az-share-render) so they never touch the live preview
+ *  the user sees on screen.
+ * ============================================================ */
+
+/* Top "Purely App" header pill: img + text inline-flex.
+ * Force the text + logo onto a single fixed-height line-box so
+ * html2canvas's baseline pass produces center alignment. */
+.az-share-render .pa-hdr-pill {
+  align-items: center !important;
+  line-height: 1 !important;
+}
+.az-share-render .pa-hdr-pill .pa-hdr-logo,
+.az-share-render .pa-hdr-pill img {
+  display: block !important;
+  vertical-align: middle !important;
+}
+.az-share-render .pa-hdr-text {
+  line-height: 1 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  /* Nudge the text down to compensate for Inter's high cap-height
+   * which reads as top-aligned next to the 24px logo glyph. */
+  transform: translateY(0.5px);
+}
+
+/* Category / Health-report / Toxin-report chips: SVG + text in
+ * an inline-flex pill. Same baseline fix. */
+.az-share-render .pa-tag {
+  align-items: center !important;
+  line-height: 1 !important;
+}
+.az-share-render .pa-tag svg {
+  display: block !important;
+  vertical-align: middle !important;
+  flex: 0 0 auto !important;
+}
+
+/* Substance summary rows (Harmful / Beneficial / Microplastics):
+ *   icon · label · value · status-dot — a 4-col grid that
+ * html2canvas drifts on. Pin every cell to its own center line
+ * so the text, value, and dot all share one Y-axis. */
+.az-share-render .pa-stat-row {
+  align-items: center !important;
+  min-height: 44px !important;
+}
+.az-share-render .pa-stat-ico,
+.az-share-render .pa-stat-lbl,
+.az-share-render .pa-stat-val,
+.az-share-render .pa-stat-dot {
+  align-self: center !important;
+}
+.az-share-render .pa-stat-ico {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 0 !important;
+}
+.az-share-render .pa-stat-ico svg {
+  display: block !important;
+  vertical-align: middle !important;
+}
+.az-share-render .pa-stat-lbl,
+.az-share-render .pa-stat-val {
+  line-height: 1.2 !important;
+}
+/* The 9px round dot rendered as a plain div — html2canvas drops
+ * it onto the baseline of whichever inline neighbour it finds.
+ * Pin it explicitly to its own block. */
+.az-share-render .pa-stat-dot {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  flex: 0 0 9px !important;
+}
+
+/* "Scored by Purely" footer: img + label inline-flex on one row. */
+.az-share-render .pa-foot {
+  align-items: center !important;
+  line-height: 1 !important;
+}
+.az-share-render .pa-foot img,
+.az-share-render .pa-foot .pinwheel,
+.az-share-render .pa-foot .pinwheel img {
+  display: block !important;
+  vertical-align: middle !important;
+}
+.az-share-render .pa-foot-by,
+.az-share-render .pa-foot-name {
+  line-height: 1 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+}
+
+/* "Purely App" mini-pill on the "What's inside" header. */
+.az-share-render .pa-inside-pill {
+  align-items: center !important;
+  line-height: 1 !important;
+}
+.az-share-render .pa-inside-pill img,
+.az-share-render .pa-inside-pill-logo {
+  display: block !important;
+  vertical-align: middle !important;
+}
+.az-share-render .pa-inside-pill > span:not(.pa-inside-pill-logo) {
+  line-height: 1 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+}
+
+/* Inside-card "Beneficial" / "Harmful" status chip — same baseline
+ * issue, pin it to its own line-box. */
+.az-share-render .pa-inside-card-head {
+  align-items: center !important;
+}
+.az-share-render .pa-inside-score {
+  line-height: 1 !important;
+  align-self: center !important;
+}
+
 /* Title row used by composeScreenWithHeader. */
 .az-share-screen-title {
   font-size: 22px; font-weight: 800; color: #1F1D1A;
