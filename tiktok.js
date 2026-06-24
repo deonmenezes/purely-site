@@ -246,17 +246,22 @@
 
   // Mirror of lib/scoreColor.ts gradient stops — keeps the ring color in
   // perfect sync with what the user sees in the actual app.
-  // Pushed the green band up — anything <70 reads as orange/amber instead of
-  // lime so a 62 score stops looking healthy. Match the mobile app's stricter
-  // gradient where green is reserved for genuinely-good products (≥75).
+  // Founder feedback (May 7): the previous gradient passed through a
+  // lime/yellow-green band around 75-85 ("the color looks awful tbh ...
+  // weird neon green"). Skip lime entirely: jump from amber (≤65) into
+  // a clean Purely-brand emerald (h~145, sat~50%) by score 70 so the
+  // "Good" range lands on a saturated forest green that matches the
+  // native app's #3F9A5D / brand --green-700 (#3f8e56) palette and the
+  // muted-but-clean saturation profile of the Icelandic Glacial maroon
+  // reference (IMG_6423).
   const SCORE_STOPS = [
     { s: 0,   h: 0,   sat: 80, l: 48 },
     { s: 30,  h: 8,   sat: 82, l: 52 },
     { s: 55,  h: 28,  sat: 88, l: 52 },
-    { s: 70,  h: 38,  sat: 88, l: 50 },
-    { s: 80,  h: 80,  sat: 70, l: 45 },
-    { s: 90,  h: 130, sat: 65, l: 40 },
-    { s: 100, h: 145, sat: 72, l: 36 }
+    { s: 65,  h: 38,  sat: 82, l: 48 },
+    { s: 70,  h: 142, sat: 55, l: 40 },
+    { s: 85,  h: 145, sat: 52, l: 36 },
+    { s: 100, h: 148, sat: 50, l: 32 }
   ];
   function appScoreColor(score) {
     const c = Math.max(0, Math.min(100, Number(score) || 0));
